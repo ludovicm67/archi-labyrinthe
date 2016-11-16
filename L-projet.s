@@ -1,6 +1,9 @@
 .data
-displayMenu: .asciiz "\nMENU :\n 1 - Génération d'un labyrinthe\n 2 - Résolution d'un labyrinthe\n\nEntrez votre choix : "
-Demande: .asciiz "Veuillez entrer un entier supérieur ou égal à 2 : "
+displayMenu:	.asciiz "\nMENU :\n 1 - Génération d'un labyrinthe\n 2 - Résolution d'un labyrinthe\n\nEntrez votre choix : "
+Demande: 	.asciiz "Veuillez entrer un entier supérieur ou égal à 2 : "
+
+fichier: 	.asciiz "./azeaze.txt"
+buffer:		.asciiz "Hello world ! =D"
 
 
 .text
@@ -8,7 +11,25 @@ Demande: .asciiz "Veuillez entrer un entier supérieur ou égal à 2 : "
 
 # Point d'entrée du programme
 __start:
-j Menu				# Affichage du menu
+
+
+# Ouvrir le fichier
+la $a0 fichier # nom du fichier
+li $a1 1 # on ouvre le fichier en écriture (0 : lecture; 1 écriture)
+li $a2 0 # pas besoin de mode (ignoré)
+li $v0 13 # appel système pour ouvrir un fichier
+move $s6 $v0 # sauvegarde la description du fichier
+
+# Ecrire dans le fichier
+move $a0 $s6 # description du fichier
+la $a1 buffer # on écrit 
+li $v0 15 # appel système pour écrire dans un fichier
+
+
+
+# Test de printDigits
+li $a0 5
+jal PrintDigits
 
 
 # Affichage du menu
@@ -28,18 +49,37 @@ j Menu				# Choix de l'utilisateur inexistant -> on lui redemande
 genereLabyrinthe:
 
 # Affichage de la demande à l'utilisateur
-Affichage: 
+Affichage:
 la $a0 Demande 			# Chargement de la chaîne de caractère Demande dans $a0
 li $v0 4 			# Affichage de la chaîne Demande
 syscall 			# Appel système
 li $v0 5 			# On lit l'entier que l'utilisateur a entré
 syscall
 move $a0 $v0 			# On déplace la valeur que l'utilisateur a entré dans $v0
-li $v1, 2 			# On attribue la valeur 2 à $v1
-blt $v0, $v1, Affichage 	# On teste si $v0<2 si c'est vrai on recommence à Affichage
-li $v0 1 			# sinon on affiche $v0
-syscall
+li $t2 2 			# On attribue la valeur 2 à $v1
+blt $v0 $t2 Affichage		# On teste si $v0<2 si c'est vrai on recommence à Affichage
+li $v0 1 			
+syscall				# sinon on affiche $a0
 j Exit				# Le programme est fini
+
+
+# Affiche un nombre entier sur 2 digits
+## $a0 = le nombre à afficher
+PrintDigits:
+move $t8 $a0
+li $t9 9
+bgt $a0 $t9 FinPrintDigits
+li $a0 0
+li $v0 1
+syscall
+
+FinPrintDigits:
+move $a0 $t8
+li $v0 1
+syscall
+
+jr $ra
+
 
 #Résolution d'un labyrinthe
 resoudreLabyrinthe:
