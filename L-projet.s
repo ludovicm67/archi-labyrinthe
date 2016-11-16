@@ -2,7 +2,7 @@
 displayMenu:	.asciiz "\nMENU :\n 1 - Génération d'un labyrinthe\n 2 - Résolution d'un labyrinthe\n\nEntrez votre choix : "
 Demande: 	.asciiz "Veuillez entrer un entier supérieur ou égal à 2 : "
 
-fichier: 	.asciiz "./azeaze.txt"
+fichier: 	.asciiz "azeaze.txt"
 buffer:		.asciiz "Hello world ! =D"
 
 
@@ -11,19 +11,27 @@ buffer:		.asciiz "Hello world ! =D"
 
 # Point d'entrée du programme
 __start:
-
-
+  
+  
 # Ouvrir le fichier
 la $a0 fichier # nom du fichier
 li $a1 1 # on ouvre le fichier en écriture (0 : lecture; 1 écriture)
 li $a2 0 # pas besoin de mode (ignoré)
 li $v0 13 # appel système pour ouvrir un fichier
+syscall
 move $s6 $v0 # sauvegarde la description du fichier
 
 # Ecrire dans le fichier
 move $a0 $s6 # description du fichier
-la $a1 buffer # on écrit 
+la $a1 buffer # adresse du buffer à partir duquel on doit écrire
+li $a2 16 # Taille du buffer
 li $v0 15 # appel système pour écrire dans un fichier
+syscall
+
+# On ferme le fichier
+move $a0 $s6 # description du fichier à fermer
+li $v0 16 # appel système pour fermer un fichier
+syscall
 
 
 
