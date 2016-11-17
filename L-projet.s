@@ -3,7 +3,7 @@ displayMenu:	.asciiz "\nMENU :\n 1 - Génération d'un labyrinthe\n 2 - Résolut
 Demande: 	.asciiz "Veuillez entrer un entier supérieur ou égal à 2 : "
 
 fichier: 	.asciiz "azeaze.txt"
-buffer:		.asciiz "Hello world ! =D"
+buffer:		.space 1 # le buffer contient par défaut un seul caractère
 
 
 .text
@@ -11,24 +11,6 @@ buffer:		.asciiz "Hello world ! =D"
 
 # Point d'entrée du programme
 __start:
-
-
-# Test d'écriture dans un fichier
-li $a0 1
-jal GetDigits
-li $a0 2 # nombre d'arguments (soit 1, soit 2)
-addiu $a1 $v0 0x30 # On met le premier digit retourné dans a1, en le convertissant en caractère
-addiu $a2 $v1 0x30 # On met le second digit retourné dans a2, en le convertissant en caractère
-
-#debug (à virer !!!) : juste pour vérifier la sortie de GetDigits
-li $v0 11 # pour les appels systèmes (affichages d'un caractère)
-move $a0 $a1
-syscall
-move $a0 $a2
-syscall
-
-jal EcrireDansFichier
-
 
 
 # Affichage du menu
@@ -59,6 +41,17 @@ li $t2 2 			# On attribue la valeur 2 à $v1
 blt $v0 $t2 Affichage		# On teste si $v0<2 si c'est vrai on recommence à Affichage
 li $v0 1 			
 syscall				# sinon on affiche $a0
+
+
+# écriture du nombre de ligne/colonnes (N) dans la première ligne du fichier
+jal GetDigits
+li $a0 2 # nombre d'arguments (soit 1, soit 2)
+addiu $a1 $v0 0x30 # On met le premier digit retourné dans a1, en le convertissant en caractère
+addiu $a2 $v1 0x30 # On met le second digit retourné dans a2, en le convertissant en caractère
+
+jal EcrireDansFichier
+
+
 j Exit				# Le programme est fini
 
 
@@ -104,13 +97,26 @@ EcrireDansFichier:
 	move $s1 $v0 		# sauvegarde du descripteur du fichier
 
 	# Ecrire dans le fichier
+	## écriture du premier caractère
 	move $a0 $s1 		# descripteur du fichier
 	la $a1 buffer 		# adresse du buffer à partir duquel on doit écrire
-	lw $a2 16($sp) 		# Taille du buffer (qui a été passé en argument dans $a0)
+	lw $t1 12($sp) 		# premier digit à écrire
+	sb $t1 ($a1)		# on place notre caractère dans le buffer
+	li $a2 1 		# Taille du buffer = 1 (on écrit caractère par caractère)
 	li $v0 15 		# appel système pour écrire dans un fichier
 	syscall
+	
+	li $t2 2
+	lw $t0 16($sp)
+	bne $t0 $t2 FermerFichier
+	lw $t2 8($sp) 		# deuxième digit à écrire
+	sb $t2 ($a1)		# on place notre caractère dans le buffer
+	li $v0 15 		# appel système pour écrire dans un fichier
+	syscall
+	
 
 	# On ferme le fichier
+	FermerFichier:
 	move $a0 $s1 		# descripteur du fichier à fermer
 	li $v0 16 		# appel système pour fermer un fichier
 	syscall
