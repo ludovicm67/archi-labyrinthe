@@ -12,7 +12,6 @@ RetChar: .asciiz "\n"
 __start:
 j Menu				# Affichage du menu
 
-
 # Affichage du menu
 Menu:
 la $a0 displayMenu		# On charge l'adresse de displayMenu dans $a0
@@ -36,11 +35,14 @@ li $v0 4 			# Affichage de la chaîne Demande
 syscall 			# Appel système
 li $v0 5 			# On lit l'entier que l'utilisateur a entré
 syscall
-move $a0 $v0 			# On déplace la valeur que l'utilisateur a entré dans $v0
+move $a0 $v0 			# On déplace la valeur que l'utilisateur a entré dans $a0
 li $v1, 2 			# On attribue la valeur 2 à $v1
 blt $a0, $v1, Affichage 	# On teste si $a0<2 si c'est vrai on recommence à Affichage
 mul $a0 $a0 $a0
+move $t6 $a0 #On deplace la valeur que l'utilisateur a rentré dans $t6
 jal CreerTableau
+
+j Exit 
 
 CreerTableau:
 #epilogue
@@ -118,6 +120,8 @@ j LoopAffichage
 
 FinLoopAffichage:
 
+beq $s1 $t6 RetourChariot #Si $s1=$t6 ($t6 etant la valeur entrée au départ par l'utilisateur), on fait un retour chariot
+RetourChariot:
 la $a0 RetChar
 li $v0 4
 syscall
@@ -148,9 +152,9 @@ sw $ra 0($sp)
 li $v0 1
 syscall
 
-la $a0 RetChar
-li $v0 4
-syscall
+#la $a0 RetChar
+#li $v0 4
+#syscall
 
 #épilogue:
 lw $a0 4($sp)
@@ -159,43 +163,21 @@ addu $sp $sp 8
 jr $ra
 #########################################################
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Modulo:
+#prologue
+subu $sp $sp 8
+sw $a0 4($sp)
+sw $a1 0($sp)
+#corps de la fonction
+li $a0 9
+li $a1 5
+Boucle1:
+sub $a0 $a0 $a1
+ble $a1 $a0 Boucle1
+#epilogue
+lw $a0 4($sp)
+lw $a1 0($sp)
+addi $sp $sp 8
 
 #Résolution d'un labyrinthe
 resoudreLabyrinthe:
