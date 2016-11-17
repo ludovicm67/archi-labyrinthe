@@ -17,11 +17,11 @@ __start:
 li $a0 1
 jal GetDigits
 li $a0 2 # nombre d'arguments (soit 1, soit 2)
-move $a1 $v0 # On met le premier digit retourné dans a1
-move $a2 $v1 # On met le second digit retourné dans a2
+addiu $a1 $v0 0x30 # On met le premier digit retourné dans a1, en le convertissant en caractère
+addiu $a2 $v1 0x30 # On met le second digit retourné dans a2, en le convertissant en caractère
 
-#debug (à virer !!!)  :juste pour vérifier la sortie de GetDigits
-li $v0 1 # pour les appels systèmes (affichages d'un entier)
+#debug (à virer !!!) : juste pour vérifier la sortie de GetDigits
+li $v0 11 # pour les appels systèmes (affichages d'un caractère)
 move $a0 $a1
 syscall
 move $a0 $a2
