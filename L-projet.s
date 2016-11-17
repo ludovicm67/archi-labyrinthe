@@ -11,33 +11,24 @@ buffer:		.asciiz "Hello world ! =D"
 
 # Point d'entrée du programme
 __start:
-  
-  
-# Ouvrir le fichier
-la $a0 fichier # nom du fichier
-li $a1 1 # on ouvre le fichier en écriture (0 : lecture; 1 écriture)
-li $a2 0 # pas besoin de mode (ignoré)
-li $v0 13 # appel système pour ouvrir un fichier
-syscall
-move $s6 $v0 # sauvegarde la description du fichier
 
-# Ecrire dans le fichier
-move $a0 $s6 # description du fichier
-la $a1 buffer # adresse du buffer à partir duquel on doit écrire
-li $a2 16 # Taille du buffer
-li $v0 15 # appel système pour écrire dans un fichier
-syscall
 
-# On ferme le fichier
-move $a0 $s6 # description du fichier à fermer
-li $v0 16 # appel système pour fermer un fichier
+# Test d'écriture dans un fichier
+li $a0 1
+jal GetDigits
+li $a0 2 # nombre d'arguments (soit 1, soit 2)
+move $a1 $v0 # On met le premier digit retourné dans a1
+move $a2 $v1 # On met le second digit retourné dans a2
+
+#debug (à virer !!!)  :juste pour vérifier la sortie de GetDigits
+li $v0 1 # pour les appels systèmes (affichages d'un entier)
+move $a0 $a1
+syscall
+move $a0 $a2
 syscall
 
+jal EcrireDansFichier
 
-
-# Test de printDigits
-li $a0 5
-jal PrintDigits
 
 
 # Affichage du menu
@@ -71,22 +62,70 @@ syscall				# sinon on affiche $a0
 j Exit				# Le programme est fini
 
 
-# Affiche un nombre entier sur 2 digits
-## $a0 = le nombre à afficher
-PrintDigits:
-move $t8 $a0
-li $t9 9
-bgt $a0 $t9 FinPrintDigits
-li $a0 0
-li $v0 1
-syscall
+# Retourne un nombre entier sur 2 digits
+## Entrée : $a0 = le nombre à afficher
+## Sortie : $v0 = le premier digit du nombre
+##          $v1 = le second digit du nombre
+GetDigits:
 
-FinPrintDigits:
-move $a0 $t8
-li $v0 1
-syscall
+	li $v0 0 			# par défaut le premier digit vaut 0
+	move $v1 $a0 			# on met par défaut v1 à la valeur de a0
+	li $t0 10			# t9 contient la valeur 9 (pour le test suivant)
+	ble $a0 $t0 FinGetDigits	# Si $a0 < 10, alors on a fini
+	
+	# Si le nombre est supérieur ou égal à 10, ont doit changer les valeurs de sortie
+	div $t1 $a0 $t0
+	move $v0 $t1
+	mfhi $v1
+	
+	FinGetDigits:
+	jr $ra
 
-jr $ra
+
+# Ecrire des caractères dans un fichier
+## a0 = nombre d'arguments (soit 1, soit 2)
+## a1 = premier caractère
+## a2 = deuxième caractère (si a0 = 2)
+EcrireDansFichier:
+	# epilogue
+	subu $sp $sp 20
+	sw $a0 16($sp)
+	sw $a1 12($sp)
+	sw $a2 8($sp)
+	sw $s1 4($sp)
+	sw $ra 0($sp)
+
+	# Ouvrir le fichier
+	la $a0 fichier 		# nom du fichier
+	li $a1 9 		# on ouvre le fichier en écriture (0 : lecture; 1 écriture, ... 9 : écriture à la fin)
+	li $a2 0 		# pas besoin de mode (ignoré)
+	li $v0 13 		# appel système pour ouvrir un fichier
+	syscall
+	move $s1 $v0 		# sauvegarde du descripteur du fichier
+
+	# Ecrire dans le fichier
+	move $a0 $s1 		# descripteur du fichier
+	la $a1 buffer 		# adresse du buffer à partir duquel on doit écrire
+	lw $a2 16($sp) 		# Taille du buffer (qui a été passé en argument dans $a0)
+	li $v0 15 		# appel système pour écrire dans un fichier
+	syscall
+
+	# On ferme le fichier
+	move $a0 $s1 		# descripteur du fichier à fermer
+	li $v0 16 		# appel système pour fermer un fichier
+	syscall
+
+
+	# epilogue
+	subu $sp $sp 20
+	sw $a0 16($sp)
+	sw $a1 12($sp)
+	sw $a2 8($sp)
+	sw $s1 4($sp)
+	sw $ra 0($sp)
+	jr $ra
+
+
 
 
 #Résolution d'un labyrinthe
@@ -98,3 +137,4 @@ j Exit
 Exit:
 li $v0 10 
 syscall
+
