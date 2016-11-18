@@ -4,6 +4,7 @@ Demande: .asciiz "Veuillez entrer un entier supérieur ou égal à 2 : "
 Tableau: .asciiz "Tableau de taille: "
 Aladresse: .asciiz "à l'adresse: "
 RetChar: .asciiz "\n"
+Espace: .asciiz " "
 
 .text
 .globl __start
@@ -38,8 +39,8 @@ syscall
 move $a0 $v0 			# On déplace la valeur que l'utilisateur a entré dans $a0
 li $v1, 2 			# On attribue la valeur 2 à $v1
 blt $a0, $v1, Affichage 	# On teste si $a0<2 si c'est vrai on recommence à Affichage
-mul $a0 $a0 $a0
 move $t6 $a0 #On deplace la valeur que l'utilisateur a rentré dans $t6
+mul $a0 $a0 $a0
 jal CreerTableau
 
 j Exit 
@@ -109,22 +110,25 @@ lw $a1 4($sp)
 li $s0 4
 mul $s2 $a0 $s0 #$a0: nombre d'octets occupés par le tableau
 li $s1 0 #s1: variable incrémentée: offset
+li $s3 0 #s3: valeur à incremente pour le retour à la ligne
+
 LoopAffichage:
 bge $s1 $s2 FinLoopAffichage
 lw $a1 4($sp)
 add $t0 $a1 $s1 #adresse de l'entier: adresse de début du tableau + offset
 lw $a0 0($t0)
 jal AfficheEntier
+beq $t6 $s3 Retourchar
+div $s4 $s3 $t6
+beq $s4 $t6 Retourchar
 addi $s1 $s1 4 #on incrémente la variable
+addi $s3 $s3 1
 j LoopAffichage
 
 FinLoopAffichage:
-
-beq $s1 $t6 RetourChariot #Si $s1=$t6 ($t6 etant la valeur entrée au départ par l'utilisateur), on fait un retour chariot
-RetourChariot:
 la $a0 RetChar
 li $v0 4
-syscall
+syscall 
 
 #épilogue:
 lw $s0 20($sp)
@@ -136,6 +140,7 @@ lw $ra 0($sp)
 addu $sp $sp 24
 jr $ra
 #########################################################
+
 
 #################################Fonction AfficheEntier
 ###entrées: $a0: entier à afficher
@@ -152,9 +157,9 @@ sw $ra 0($sp)
 li $v0 1
 syscall
 
-#la $a0 RetChar
-#li $v0 4
-#syscall
+la $a0 Espace
+li $v0 4
+syscall
 
 #épilogue:
 lw $a0 4($sp)
@@ -163,21 +168,20 @@ addu $sp $sp 8
 jr $ra
 #########################################################
 
-Modulo:
+Retourchar:
 #prologue
-subu $sp $sp 8
-sw $a0 4($sp)
-sw $a1 0($sp)
+subu $sp $sp 4
+sw $ra 0($sp)
+
 #corps de la fonction
-li $a0 9
-li $a1 5
-Boucle1:
-sub $a0 $a0 $a1
-ble $a1 $a0 Boucle1
+la $a0 RetChar
+li $v0 4 
+syscall
+
 #epilogue
-lw $a0 4($sp)
-lw $a1 0($sp)
-addi $sp $sp 8
+lw $ra 0($sp)
+addu $sp $sp 4
+jr $ra
 
 #Résolution d'un labyrinthe
 resoudreLabyrinthe:
