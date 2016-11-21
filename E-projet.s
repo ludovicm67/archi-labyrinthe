@@ -102,7 +102,28 @@ CreerTableau:
 	addu $sp $sp 8
 	
 	jr $ra
-
+	
+ModifTableau:
+	#prologue
+	subu $sp $sp 16
+	sw $a0 12($sp) # adresse du premier élément du tableau
+	sw $a1 8($sp) # l'indice de l'élement à modifier
+	sw $a2 4($sp) # la nouvelle valeur à mettre
+	sw $ra 0($sp)
+	
+	#corps de la fonction
+	mul $s0 $a1 4 #on multiplie l'indice par 4 pour récuperer l'adresse de l'élément à modifier dans le tableau
+	add $s0 $s0 $a0 #là on a désormais la bonne adresse pour la case à modifier
+	sw $a2 0($s0) #on met la valeur
+	
+	#epilogue
+	sw $a0 12($sp)
+	sw $a1 8($sp) 
+	sw $a2 4($sp) 
+	sw $ra 0($sp)
+	addu $sp $sp 16
+	
+	jr $ra
 
 
 # Permet d'afficher le contenu d'un tableau carré (N*N)
@@ -317,24 +338,43 @@ MenucaseDetF:
 	move $a0 $s0 #On stocke dans $a0 la valeur de $s0 :0
 	li $v0 42 #On genere un nouveau nombre aleatoire: $a0<= $a0 <$a1
 	syscall
-	li $v0 1
-	syscall
-	move $t2 $a0 #On stocke ce nouveau nombre dans $t2
+	move $t2 $a0 #On stocke ce nouveau nombre dans $t2: d
 	li $v0 42 #On genere un nouveau nombre aleatoire: $a0<= $a0 <$a1
 	syscall
-	li $v0 1 
-	syscall
-	move $t3 $a0 #On stocke ce nouveau nombre dans $t3
-	#beq $t1 $s0 cas0 #si le nombre aleatoire vaut 0 alors D à gauche, F à droite
-	#beq $t1 $s1 cas1 #si le nombre aleatoire vaut 0 alors D à droite, F à gauche
+	move $t3 $a0 #On stocke ce nouveau nombre dans $t3: f
+	beq $t1 $s0 cas0 #si le nombre aleatoire vaut 0 alors D à gauche, F à droite
+	beq $t1 $s1 cas1 #si le nombre aleatoire vaut 0 alors D à droite, F à gauche
 	#beq $t1 $s2 cas2 #si le nombre aleatoire vaut 0 alors D en haut, F en bas
 	#beq $t1 $s3 cas3 #si le nombre aleatoire vaut 0 alors D en bas, F en haut
 	
-	#cas0:
+	cas0: #Traitement du cas0 D=d*N F=f*N-4
+		mul $a1 $a0 $t2	# On multiplie la valeur aléatoire d par la taille du tableau pour obtenir l'indice
+		mul $a0 $a0 4 # taille du tableau à créer en octets
+		li $v0 9 # on récupère l'adresse du premier élément du tableau
+		syscall	# $v0 contiendra donc l'adresse du premier élément du tableau
+		move $a0 $v0 # On stocke l'adresse du premier élément du tableau dans $a0
+		li $a2 31 # On attribue la valeur à modifier à $a2
+		jal ModifTableau
+		mul $a1 $a0 $t3
+		sub $a1 $a1 4
+		li $a2 47
+		jal ModifTableau
 	
-	
+	cas1:# Traitement du cas1 D=d*N-4 F=f*N
+		mul $a1 $a0 $t2	# On multiplie la valeur aléatoire d par la taille du tableau pour obtenir l'indice
+		sub $a1 a1 4 #On soustrait par 4
+		mul $a0 $a0 4 # taille du tableau à créer en octets
+		li $v0 9 # on récupère l'adresse du premier élément du tableau
+		syscall	# $v0 contiendra donc l'adresse du premier élément du tableau
+		move $a0 $v0 # On stocke l'adresse du premier élément du tableau dans $a0
+		li $a2 31 # On attribue la valeur à modifier à $a2
+		jal ModifTableau
+		mul $a1 $a0 $t3
+		li $a2 47
+		jal ModifTableau
+		
 	#epilogue
-	lw $a0 1	²6($sp)
+	lw $a0 16($sp)
 	lw $a1 12($sp)
 	lw $a2 8($sp)
 	lw $a3 4($sp)
