@@ -103,27 +103,36 @@ CreerTableau:
 	
 	jr $ra
 	
+
+
+# Permet de modifier une valeur d'une case du labyrinthe
+## $a0 : adresse du 1er élément du tableau
+## $a1 : indice du premier élément à modifier
+## $a2 : nouvelle valeur
 ModifTableau:
-	#prologue
-	subu $sp $sp 16
-	sw $a0 12($sp) # adresse du premier élément du tableau
-	sw $a1 8($sp) # l'indice de l'élement à modifier
-	sw $a2 4($sp) # la nouvelle valeur à mettre
+	# prologue (à faire : a0 a1 a2 s0 ra)
+	subu $sp $sp 20
+	sw $a0 16($sp)
+	sw $a1 12($sp)
+	sw $a2 8($sp)
+	sw $s0 4($sp)
 	sw $ra 0($sp)
-	
-	#corps de la fonction
-	mul $s0 $a1 4 #on multiplie l'indice par 4 pour récuperer l'adresse de l'élément à modifier dans le tableau
-	add $s0 $s0 $a0 #là on a désormais la bonne adresse pour la case à modifier
-	sw $a2 0($s0) #on met la valeur
-	
+
+	# corps de la fonction
+	mul $s0 $a1 4 		# 4*indice
+	add $s0 $s0 $a0 	# là on a désormais la bonne adresse pour la case à modifier
+	sw $a2 0($s0) 		# là on met la case désirée à la nouvelle valeur
+
 	#epilogue
-	sw $a0 12($sp)
-	sw $a1 8($sp) 
-	sw $a2 4($sp) 
-	sw $ra 0($sp)
-	addu $sp $sp 16
+	lw $a0 16($sp)
+	lw $a1 12($sp)
+	lw $a2 8($sp)
+	lw $s0 4($sp)
+	lw $ra 0($sp)
+	addu $sp $sp 20
 	
 	jr $ra
+
 
 
 # Permet d'afficher le contenu d'un tableau carré (N*N)
@@ -263,13 +272,11 @@ EcrireDansFichier:
 	li $v0 15 		# appel système pour écrire dans un fichier
 	syscall
 	
-
 	# On ferme le fichier
 	FermerFichier:
 	move $a0 $s0 		# descripteur du fichier à fermer
 	li $v0 16 		# appel système pour fermer un fichier
 	syscall
-
 
 	# epilogue
 	lw $a0 20($sp)
@@ -314,8 +321,11 @@ VideFichier:
 	
 	jr $ra
 
-MenucaseDetF:
 
+
+# $a0 contient le nombre de lignes/colonnes du labyrinthe entrée par l'utilisateur
+# $a1 contient l'adresse de la première case du tableau
+MenucaseDetF:
 	#prologue
 	subu $sp $sp 20
 	sw $a0 16($sp)
@@ -325,53 +335,90 @@ MenucaseDetF:
 	sw $ra 0($sp)
 	
 	#corps de la fonction
-	li $s0 0 #D à gauche, F à droite
-	li $s1 1 #D à droite, F à gauche
-	li $s2 2 #D en haut, F en bas
-	li $s3 3 #D en bas, F en haut
-	li $a0 0 #borne 1
-	li $a1 4 #borne 2
-	li $v0 42 #genere un nombre aléatoire $a0 , borne 1<=$a0 < borne 2
-	syscall
-	move $t1 $a0 # On déplace le nombre aleatoire dans $t1
-	lw $a1 16($sp) #On stocke dans $a1 la valeur initiale de $a0: N
-	move $a0 $s0 #On stocke dans $a0 la valeur de $s0 :0
-	li $v0 42 #On genere un nouveau nombre aleatoire: $a0<= $a0 <$a1
-	syscall
-	move $t2 $a0 #On stocke ce nouveau nombre dans $t2: d
-	li $v0 42 #On genere un nouveau nombre aleatoire: $a0<= $a0 <$a1
-	syscall
-	move $t3 $a0 #On stocke ce nouveau nombre dans $t3: f
-	beq $t1 $s0 cas0 #si le nombre aleatoire vaut 0 alors D à gauche, F à droite
-	beq $t1 $s1 cas1 #si le nombre aleatoire vaut 0 alors D à droite, F à gauche
-	#beq $t1 $s2 cas2 #si le nombre aleatoire vaut 0 alors D en haut, F en bas
-	#beq $t1 $s3 cas3 #si le nombre aleatoire vaut 0 alors D en bas, F en haut
 	
-	cas0: #Traitement du cas0 D=d*N F=f*N-4
-		mul $a1 $a0 $t2	# On multiplie la valeur aléatoire d par la taille du tableau pour obtenir l'indice
-		mul $a0 $a0 4 # taille du tableau à créer en octets
-		li $v0 9 # on récupère l'adresse du premier élément du tableau
-		syscall	# $v0 contiendra donc l'adresse du premier élément du tableau
-		move $a0 $v0 # On stocke l'adresse du premier élément du tableau dans $a0
-		li $a2 31 # On attribue la valeur à modifier à $a2
-		jal ModifTableau
-		mul $a1 $a0 $t3
-		sub $a1 $a1 4
-		li $a2 47
-		jal ModifTableau
+	move $s0 $a0 # $s0 vaudra désormais N
+	move $s1 $a1 # $s1 vaudra l'adresse de la première case du tableau
 	
-	cas1:# Traitement du cas1 D=d*N-4 F=f*N
-		mul $a1 $a0 $t2	# On multiplie la valeur aléatoire d par la taille du tableau pour obtenir l'indice
-		sub $a1 a1 4 #On soustrait par 4
-		mul $a0 $a0 4 # taille du tableau à créer en octets
-		li $v0 9 # on récupère l'adresse du premier élément du tableau
-		syscall	# $v0 contiendra donc l'adresse du premier élément du tableau
-		move $a0 $v0 # On stocke l'adresse du premier élément du tableau dans $a0
-		li $a2 31 # On attribue la valeur à modifier à $a2
-		jal ModifTableau
-		mul $a1 $a0 $t3
-		li $a2 47
-		jal ModifTableau
+	
+	# on génère les emplacements aléatoires des cases départ et de fin
+	## départ d (sera stockée dans $s2)
+	li $a0 0
+	move $a1 $s0 # borne sup = N
+	li $v0 42 # genere un nombre aléatoire dans $a0, 0 <= $a0 < borne sup ($a1)
+	syscall
+	move $s2 $a0
+	
+	## arrivée f (sera stockée dans $s3)
+	li $a0 0
+	move $a1 $s0 # borne sup = N
+	li $v0 42 # genere un nombre aléatoire dans $a0, 0 <= $a0 < borne sup ($a1)
+	syscall
+	move $s3 $a0
+	
+	
+	# on génère maintenant une valeur, qui vaut soit 0, 1, 2, ou 3 pour déterminer la configuration
+	li $a0 0
+	li $a1 4 # borne sup = N
+	li $v0 42 # genere un nombre aléatoire dans $a0, 0 <= $a0 < borne sup ($a1)
+	syscall
+	move $s4 $a0
+	
+	# On va donc utiliser la configuration choisie précédemment
+	beq $s4 0 config0
+	beq $s4 1 config1
+	beq $s4 2 config2
+	beq $s4 3 config3
+	
+	
+	# Configuration 0
+	## Début D : à gauche	D=d*N
+	## Fin F : à droite	F=f*N + N-1
+	config0:
+	mul $s5 $s2 $s0 #D
+	subi $s6 $s0 1
+	mul $s7 $s3 $s0
+	add $s6 $s6 $s7 #F
+	j ConfigOK
+	
+	# Configuration 1
+	## Début D : à droite	D=d*N + N-1
+	## Fin F : à gauche	F=f*N
+	config1:
+	subi $s5 $s0 1
+	mul $s7 $s2 $s0
+	add $s5 $s5 $s7 #D
+	mul $s6 $s3 $s0 #F
+	j ConfigOK
+	
+	# Configuration 2
+	## Début D : en haut	D=d
+	## Fin F : en bas	F=N*(N-1) + f
+	config2:
+	move $s5 $s2 #D
+	subi $s6 $s0 1
+	mul $s6 $s0 $s6
+	add $s6 $s6 $s3 #F
+	j ConfigOK
+	
+	# Configuration 3
+	## Début D : en bas	D=N*(N-1) + d
+	## Fin F : en haut	F=f
+	config3:
+	subi $s5 $s0 1
+	mul $s5 $s0 $s5
+	add $s5 $s5 $s2 #D	
+	move $s6 $s3 #F
+	
+	ConfigOK:
+	move $a0 $s1 # adresse
+	move $a1 $s5 # indice	
+	li $a2 31 # nouvelle valeur (15 (tous les murs) + 16 (casé départ))
+	jal ModifTableau
+	
+	move $a0 $s1 # adresse
+	move $a1 $s6 # indice	
+	li $a2 47 # nouvelle valeur (15 (tous les murs) + 32 (casé fin))
+	jal ModifTableau
 		
 	#epilogue
 	lw $a0 16($sp)
@@ -380,7 +427,10 @@ MenucaseDetF:
 	lw $a3 4($sp)
 	lw $ra 0($sp)
 	addu $sp $sp 20
+	
 	jr $ra
+
+
 	
 #Résolution d'un labyrinthe
 resoudreLabyrinthe:
