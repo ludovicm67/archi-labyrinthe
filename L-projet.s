@@ -53,27 +53,15 @@ genereLabyrinthe:
 	blt $a0 2 DemanderN 		# On teste si $a0<2 si c'est vrai on recommence à DemanderN
 	bgt $a0 99 DemanderN 		# On teste si $a0>99 si c'est vrai on recommence à DemanderN
 	
-	
 	move $a2 $a0 			# On deplace la valeur que l'utilisateur a rentré dans $a2
 	mul $a0 $a2 $a2			# Taille du tableau à créer (N*N)
 	jal CreerTableau		# $v0 contiendra l'adresse du premier élément du tableau
 	
 	move $a0 $a2			# On met $a0 à la valeur entrée par l'utilisateur, qui a été stockée dans $a2
 	move $a1 $v0			# on fait en sorte que $a1 contienne l'adresse du premier élément du tableau
+	
+	jal VideFichier			# On vide d'abord le fichier
 	jal AfficheTableau
-	
-	
-	# Juste pour tester l'écriture du nombre de ligne/colonnes (N) dans la première ligne du fichier (à enlever par la suite)
-	jal VideFichier
-	move $a0 $a2
-	jal GetDigits
-	li $a0 2 # nombre d'arguments (soit 1, soit 2)
-	move $a1 $v0 # premier digit
-	move $a2 $v1 # deuxième digit
-
-	jal EcrireDansFichier
-	# fin du test
-	
 	
 	j Exit
 
@@ -118,10 +106,12 @@ CreerTableau:
 ##          $a1 = adresse du premier élément du tableau
 AfficheTableau:
 	# prologue
-	subu $sp $sp 16
-	sw $s0 12($sp)
-	sw $a0 8($sp)
-	sw $a1 4($sp)
+	subu $sp $sp 24
+	sw $s0 20($sp)
+	sw $s1 16($sp)
+	sw $a0 12($sp)
+	sw $a1 8($sp)
+	sw $a2 4($sp)
 	sw $ra 0($sp)
 	
 	
@@ -132,8 +122,11 @@ AfficheTableau:
 	move $t1 $s0		# $t1 : ième colonne (initialisé à N, dans le but de commencer par un saut de ligne)
 	li $t2 0 		# $t2 : offset de la case courante du tableau
 	
-	li $v0 1
-	syscall
+	jal GetDigits
+	li $a0 2 # nombre d'arguments (soit 1, soit 2)
+	move $a1 $v0 # premier digit
+	move $a2 $v1 # deuxième digit
+	jal EcrireDansFichier
 	
 	BoucleAfficheTableau:
 	beq $t2 $t0 FinBoucleAfficheTableau	# Si on a parcouru toutes les cases du tableau, on sort de la boucle
@@ -148,17 +141,24 @@ AfficheTableau:
 	# On traite ici le cas des espaces entre les nombres	
 	ApresSautDeLigne:
 	beq $t1 0 ApresEspace			# Si on est en début de ligne, pas besoin d'insérer d'espace
-	la $a0 Espace				# On charge l'adresse de Espace dans $a0
-	li $v0 4				# On dit qu'on souhaite afficher la chaine de caractères stockée dans $a0
-	syscall					# On effectue l'appel système
+	li $t4 ' '
+	sb $t4 buffer
+	lb $a1 buffer
+	li $a0 1 # nombre d'arguments (soit 1, soit 2)
+	move $a1 $v0 # premier digit
+	jal EcrireDansFichier
 	
 	ApresEspace:
+	lw $a1 8($sp)
 	addu $t3 $a1 $t2			# $t3 : adresse de la case courante
 	
 	# AfficheEntier
 	lw $a0 0($t3)				# $a0 contient désormais la valeur de la case courante
-	li $v0 1				# on dit que l'on souhaite afficher un entier ($a0)
-	syscall					# on effectue l'appel système
+	jal GetDigits
+	li $a0 2 # nombre d'arguments (soit 1, soit 2)
+	move $a1 $v0 # premier digit
+	move $a2 $v1 # deuxième digit
+	jal EcrireDansFichier
 	
 	addu $t2 $t2 4				# on incrémente $t2 de 4 (on avance d'une case du tableau, l'offset augmente donc de 4)
 	addu $t1 $t1 1				# on incrémente $t1 de 1 (on avance d'une colonne)
@@ -168,11 +168,13 @@ AfficheTableau:
 	
 	# prologue
 	FinBoucleAfficheTableau:
-	lw $s0 12($sp)
-	lw $a0 8($sp)
-	lw $a1 4($sp)
+	lw $s0 20($sp)
+	lw $s1 16($sp)
+	lw $a0 12($sp)
+	lw $a1 8($sp)
+	lw $a2 4($sp)
 	lw $ra 0($sp)
-	addu $sp $sp 16
+	addu $sp $sp 24
 	
 	jr $ra
 
@@ -206,11 +208,12 @@ GetDigits:
 ## a2 = deuxième caractère (si a0 = 2)
 EcrireDansFichier:
 	# prologue
-	subu $sp $sp 20
-	sw $a0 16($sp)
-	sw $a1 12($sp)
-	sw $a2 8($sp)
-	sw $s0 4($sp)
+	subu $sp $sp 24
+	sw $a0 20($sp)
+	sw $a1 16($sp)
+	sw $a2 12($sp)
+	sw $s0 8($sp)
+	sw $s1 4($sp)
 	sw $ra 0($sp)
 
 	# Ouvrir le fichier
@@ -225,17 +228,16 @@ EcrireDansFichier:
 	## écriture du premier caractère
 	move $a0 $s0 		# descripteur du fichier
 	la $a1 buffer 		# adresse du buffer à partir duquel on doit écrire
-	lw $t1 12($sp) 		# premier caractère à écrire
-	sb $t1 ($a1)		# on place notre caractère dans le buffer
+	lw $s1 16($sp) 		# premier caractère à écrire
+	sb $s1 ($a1)		# on place notre caractère dans le buffer
 	li $a2 1 		# Taille du buffer = 1 (on écrit caractère par caractère)
 	li $v0 15 		# appel système pour écrire dans un fichier
 	syscall
 	
-	li $t2 2		# On met $t2 à la valeur 2
-	lw $t0 16($sp)		# On met $t0 à la valeur originale de $a0
-	bne $t0 $t2 FermerFichier	# Si on ne souhaitais pas afficher 2 caractères, on ferme directement le fichier
-	lw $t2 8($sp) 		# deuxième caractère à écrire
-	sb $t2 ($a1)		# on place notre caractère dans le buffer
+	lw $s1 20($sp)		# On met $s1 à la valeur originale de $a0
+	bne $s1 2 FermerFichier	# Si on ne souhaitais pas afficher 2 caractères, on ferme directement le fichier
+	lw $s1 12($sp) 		# deuxième caractère à écrire
+	sb $s1 ($a1)		# on place notre caractère dans le buffer
 	li $v0 15 		# appel système pour écrire dans un fichier
 	syscall
 	
@@ -248,12 +250,13 @@ EcrireDansFichier:
 
 
 	# epilogue
-	lw $a0 16($sp)
-	lw $a1 12($sp)
-	lw $a2 8($sp)
-	lw $s0 4($sp)
+	lw $a0 20($sp)
+	lw $a1 16($sp)
+	lw $a2 12($sp)
+	lw $s0 8($sp)
+	lw $s1 4($sp)
 	lw $ra 0($sp)
-	addu $sp $sp 20
+	addu $sp $sp 24
 	
 	jr $ra
 
