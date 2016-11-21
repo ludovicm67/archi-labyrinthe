@@ -109,7 +109,7 @@ CreerTableau:
 ## $a0 : adresse du 1er élément du tableau
 ## $a1 : indice du premier élément à modifier
 ## $a2 : nouvelle valeur
-ModifTableau:
+ModifieTableau:
 	# prologue (à faire : a0 a1 a2 s0 ra)
 	subu $sp $sp 20
 	sw $a0 16($sp)
@@ -322,38 +322,38 @@ VideFichier:
 	jr $ra
 
 
-
-# $a0 contient le nombre de lignes/colonnes du labyrinthe entrée par l'utilisateur
-# $a1 contient l'adresse de la première case du tableau
+# Modifie le labyrinthe pour ajouter la case de départ et de fin
+## Entrées : $a0 : le nombre de lignes/colonnes du labyrinthe entrée par l'utilisateur
+##           $a1 : l'adresse de la première case du tableau
+## Sortie :  $v0 : l'indice de la case de départ
 MenucaseDetF:
 	#prologue
-	subu $sp $sp 20
-	sw $a0 16($sp)
-	sw $a1 12($sp)
-	sw $a2 8($sp)
-	sw $a3 4($sp)
+	subu $sp $sp 16
+	sw $a0 12($sp)
+	sw $a1 8($sp)
+	sw $a2 4($sp)
 	sw $ra 0($sp)
 	
 	#corps de la fonction
 	
-	move $s0 $a0 # $s0 vaudra désormais N
-	move $s1 $a1 # $s1 vaudra l'adresse de la première case du tableau
+	move $t0 $a0 # $t0 vaudra désormais N
+	move $t1 $a1 # $t1 vaudra l'adresse de la première case du tableau
 	
 	
 	# on génère les emplacements aléatoires des cases départ et de fin
-	## départ d (sera stockée dans $s2)
+	## départ d (sera stockée dans $t2)
 	li $a0 0
-	move $a1 $s0 # borne sup = N
+	move $a1 $t0 # borne sup = N
 	li $v0 42 # genere un nombre aléatoire dans $a0, 0 <= $a0 < borne sup ($a1)
 	syscall
-	move $s2 $a0
+	move $t2 $a0
 	
-	## arrivée f (sera stockée dans $s3)
+	## arrivée f (sera stockée dans $t3)
 	li $a0 0
-	move $a1 $s0 # borne sup = N
+	move $a1 $t0 # borne sup = N
 	li $v0 42 # genere un nombre aléatoire dans $a0, 0 <= $a0 < borne sup ($a1)
 	syscall
-	move $s3 $a0
+	move $t3 $a0
 	
 	
 	# on génère maintenant une valeur, qui vaut soit 0, 1, 2, ou 3 pour déterminer la configuration
@@ -361,72 +361,76 @@ MenucaseDetF:
 	li $a1 4 # borne sup = N
 	li $v0 42 # genere un nombre aléatoire dans $a0, 0 <= $a0 < borne sup ($a1)
 	syscall
-	move $s4 $a0
+	move $t4 $a0
 	
 	# On va donc utiliser la configuration choisie précédemment
-	beq $s4 0 config0
-	beq $s4 1 config1
-	beq $s4 2 config2
-	beq $s4 3 config3
+	## sera stocké dans $t5 l'indice de la case de départ
+	## dans $t6 l'indice de la case de fin
+	## $t7 permet juste de réaliser des parties d'opérations
+	beq $t4 0 config0
+	beq $t4 1 config1
+	beq $t4 2 config2
+	beq $t4 3 config3
 	
 	
 	# Configuration 0
 	## Début D : à gauche	D=d*N
 	## Fin F : à droite	F=f*N + N-1
 	config0:
-	mul $s5 $s2 $s0 #D
-	subi $s6 $s0 1
-	mul $s7 $s3 $s0
-	add $s6 $s6 $s7 #F
+	mul $t5 $t2 $s0 #D
+	subi $t6 $t0 1
+	mul $t7 $t3 $t0
+	add $t6 $t6 $t7 #F
 	j ConfigOK
 	
 	# Configuration 1
 	## Début D : à droite	D=d*N + N-1
 	## Fin F : à gauche	F=f*N
 	config1:
-	subi $s5 $s0 1
-	mul $s7 $s2 $s0
-	add $s5 $s5 $s7 #D
-	mul $s6 $s3 $s0 #F
+	subi $t5 $t0 1
+	mul $t7 $t2 $t0
+	add $t5 $t5 $t7 #D
+	mul $t6 $t3 $t0 #F
 	j ConfigOK
 	
 	# Configuration 2
 	## Début D : en haut	D=d
 	## Fin F : en bas	F=N*(N-1) + f
 	config2:
-	move $s5 $s2 #D
-	subi $s6 $s0 1
-	mul $s6 $s0 $s6
-	add $s6 $s6 $s3 #F
+	move $t5 $t2 #D
+	subi $t6 $t0 1
+	mul $t6 $t0 $t6
+	add $t6 $t6 $t3 #F
 	j ConfigOK
 	
 	# Configuration 3
 	## Début D : en bas	D=N*(N-1) + d
 	## Fin F : en haut	F=f
 	config3:
-	subi $s5 $s0 1
-	mul $s5 $s0 $s5
-	add $s5 $s5 $s2 #D	
-	move $s6 $s3 #F
+	subi $t5 $t0 1
+	mul $t5 $t0 $t5
+	add $t5 $t5 $t2 #D	
+	move $t6 $t3 #F
 	
 	ConfigOK:
-	move $a0 $s1 # adresse
-	move $a1 $s5 # indice	
+	move $a0 $t1 # adresse
+	move $a1 $t5 # indice	
 	li $a2 31 # nouvelle valeur (15 (tous les murs) + 16 (casé départ))
-	jal ModifTableau
+	jal ModifieTableau
 	
-	move $a0 $s1 # adresse
-	move $a1 $s6 # indice	
+	move $a0 $t1 # adresse
+	move $a1 $t6 # indice	
 	li $a2 47 # nouvelle valeur (15 (tous les murs) + 32 (casé fin))
-	jal ModifTableau
+	jal ModifieTableau
 		
 	#epilogue
-	lw $a0 16($sp)
-	lw $a1 12($sp)
-	lw $a2 8($sp)
-	lw $a3 4($sp)
+	move $v0 $t5
+	
+	lw $a0 12($sp)
+	lw $a1 8($sp)
+	lw $a2 4($sp)
 	lw $ra 0($sp)
-	addu $sp $sp 20
+	addu $sp $sp 16
 	
 	jr $ra
 
