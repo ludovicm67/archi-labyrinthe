@@ -59,20 +59,9 @@ genereLabyrinthe:
 	
 	move $a0 $a2			# On met $a0 à la valeur entrée par l'utilisateur, qui a été stockée dans $a2
 	move $a1 $v0			# on fait en sorte que $a1 contienne l'adresse du premier élément du tableau
+	
+	jal VideFichier			# On vide d'abord le fichier
 	jal AfficheTableau
-	
-	
-	# Juste pour tester l'écriture du nombre de ligne/colonnes (N) dans la première ligne du fichier (à enlever par la suite)
-	jal VideFichier
-	move $a0 $a2
-	jal GetDigits
-	li $a0 2 # nombre d'arguments (soit 1, soit 2)
-	move $a1 $v0 # premier digit
-	move $a2 $v1 # deuxième digit
-
-	jal EcrireDansFichier
-	# fin du test
-	
 	
 	j Exit
 
@@ -117,10 +106,12 @@ CreerTableau:
 ##          $a1 = adresse du premier élément du tableau
 AfficheTableau:
 	# prologue
-	subu $sp $sp 16
-	sw $s0 12($sp)
-	sw $a0 8($sp)
-	sw $a1 4($sp)
+	subu $sp $sp 24
+	sw $s0 20($sp)
+	sw $s1 16($sp)
+	sw $a0 12($sp)
+	sw $a1 8($sp)
+	sw $a2 4($sp)
 	sw $ra 0($sp)
 	
 	
@@ -131,8 +122,11 @@ AfficheTableau:
 	move $t1 $s0		# $t1 : ième colonne (initialisé à N, dans le but de commencer par un saut de ligne)
 	li $t2 0 		# $t2 : offset de la case courante du tableau
 	
-	li $v0 1
-	syscall
+	jal GetDigits
+	li $a0 2 # nombre d'arguments (soit 1, soit 2)
+	move $a1 $v0 # premier digit
+	move $a2 $v1 # deuxième digit
+	jal EcrireDansFichier
 	
 	BoucleAfficheTableau:
 	beq $t2 $t0 FinBoucleAfficheTableau	# Si on a parcouru toutes les cases du tableau, on sort de la boucle
@@ -140,24 +134,28 @@ AfficheTableau:
 	# On traite ici le cas du saut de ligne
 	blt $t1 $s0 ApresSautDeLigne		# Si on est pas encore en fin de ligne, on ne saute pas de ligne
 	li $t1 0				# On est à nouveau dans la 0ème colonne
-	la $a0 RetChar				# On charge l'adresse de RetChar dans $a0
-	li $v0 4				# On dit qu'on souhaite afficher la chaine de caractères stockée dans $a0
-	syscall					# On effectue l'appel système
+	li $a0 1 # nombre d'arguments (soit 1, soit 2)
+	li $a1 0x0A # \n en ascii
+	jal EcrireDansFichier
 
 	# On traite ici le cas des espaces entre les nombres	
 	ApresSautDeLigne:
 	beq $t1 0 ApresEspace			# Si on est en début de ligne, pas besoin d'insérer d'espace
-	la $a0 Espace				# On charge l'adresse de Espace dans $a0
-	li $v0 4				# On dit qu'on souhaite afficher la chaine de caractères stockée dans $a0
-	syscall					# On effectue l'appel système
+	li $a0 1 # nombre d'arguments (soit 1, soit 2)
+	li $a1 0x20 # espace en ascii
+	jal EcrireDansFichier
 	
 	ApresEspace:
+	lw $a1 8($sp)
 	addu $t3 $a1 $t2			# $t3 : adresse de la case courante
 	
 	# AfficheEntier
 	lw $a0 0($t3)				# $a0 contient désormais la valeur de la case courante
-	li $v0 1				# on dit que l'on souhaite afficher un entier ($a0)
-	syscall					# on effectue l'appel système
+	jal GetDigits
+	li $a0 2 # nombre d'arguments (soit 1, soit 2)
+	move $a1 $v0 # premier digit
+	move $a2 $v1 # deuxième digit
+	jal EcrireDansFichier
 	
 	addu $t2 $t2 4				# on incrémente $t2 de 4 (on avance d'une case du tableau, l'offset augmente donc de 4)
 	addu $t1 $t1 1				# on incrémente $t1 de 1 (on avance d'une colonne)
@@ -167,11 +165,13 @@ AfficheTableau:
 	
 	# prologue
 	FinBoucleAfficheTableau:
-	lw $s0 12($sp)
-	lw $a0 8($sp)
-	lw $a1 4($sp)
+	lw $s0 20($sp)
+	lw $s1 16($sp)
+	lw $a0 12($sp)
+	lw $a1 8($sp)
+	lw $a2 4($sp)
 	lw $ra 0($sp)
-	addu $sp $sp 16
+	addu $sp $sp 24
 	
 	jr $ra
 

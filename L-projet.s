@@ -134,18 +134,15 @@ AfficheTableau:
 	# On traite ici le cas du saut de ligne
 	blt $t1 $s0 ApresSautDeLigne		# Si on est pas encore en fin de ligne, on ne saute pas de ligne
 	li $t1 0				# On est à nouveau dans la 0ème colonne
-	la $a0 RetChar				# On charge l'adresse de RetChar dans $a0
-	li $v0 4				# On dit qu'on souhaite afficher la chaine de caractères stockée dans $a0
-	syscall					# On effectue l'appel système
+	li $a0 1 # nombre d'arguments (soit 1, soit 2)
+	li $a1 0x0A # \n en ascii
+	jal EcrireDansFichier
 
 	# On traite ici le cas des espaces entre les nombres	
 	ApresSautDeLigne:
 	beq $t1 0 ApresEspace			# Si on est en début de ligne, pas besoin d'insérer d'espace
-	li $t4 ' '
-	sb $t4 buffer
-	lb $a1 buffer
 	li $a0 1 # nombre d'arguments (soit 1, soit 2)
-	move $a1 $v0 # premier digit
+	li $a1 0x20 # espace en ascii
 	jal EcrireDansFichier
 	
 	ApresEspace:
