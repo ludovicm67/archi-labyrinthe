@@ -433,6 +433,70 @@ MenucaseDetF:
 	addu $sp $sp 16
 	
 	jr $ra
+	
+# Retourne les indices des différents voisins d'une case
+# Entrée: $a0 qui sera l'indice de la case courante
+	# $a1 qui sera la valeur de grand N entrée au début par l'utilisateur
+# Sortie: # $v0 le nombre de voisins
+	# $a0 l'indice du voisins de gauche
+	# $a1 l'indice du voisin de droite
+	# $a2 l'indice du voisins du haut
+	# $a3 l'indice du voisin du bas
+
+	
+Voisin:
+	#prologue
+	subu $sp $sp 20
+	sw $a0 16($sp) # L'indice de la case courante
+	sw $a1 12($sp) # N
+	sw $a2 8($sp) # l'indice du voisin du haut
+	sw $a3 4($sp) # l'indice du voisin du bas 
+	sw $ra 0($sp) 
+	
+	#corps de la fonction
+	li $v0 0 #compteur du nombre de voisins qu'on initialise à 0
+	move $t0 $a0 #On sauvegarde la valeur de $a0 dans $t0
+	move $t1 $a1 #On sauvegarde la valeur de $a1 dans $t1
+	div $t2 $a0 $a1
+	mfhi $t2 # X%N
+	
+	# valeurs par défaut
+	li $a0 -1
+	li $a1 -1
+	li $a2 -1
+	li $a3 -1
+	
+	#valeurs pour les tests
+	subi $t3 $a0 1 # $t3=N-1
+	mul $t4 $t3 $t1 # $t4=N*(N-1)
+	
+	#Traitement des differents cas
+	beq $t2 0 FinVoisinGauche #Si X%N =0 alors pas de voisin à gauche
+	move $a0 $t3 #sinon l'indice vaut N-1
+	addi $v0 $v0 1 #on incremente le compteur
+	FinVoisinGauche:
+		beq $t3 $t2 FinVoisinDroite #Si X%N = N-1 alors pas de voisin à droite
+		addi $a1 $t0 1 #sinon l'indice vaut N+1
+		addi $v0 $v0 1 #on incremente le compteur
+	FinVoisinDroite:
+		blt $t0 $t1 FinVoisinHaut #Si X<N alors il n'y a pas de voisin en haut
+		subi $a2 $t0 $t1 #sinon l'indice vaut X-N
+		addi $v0 $v0 1 #on incremente le compteur
+	FinVoisinHaut:
+		bge $t0 $t4 FinVoisinBas # Si X >= N*(N-1) alors il n'y a pas de voisin en bas
+		addi $a3 $t0 $t1 # Sinon l'infice vaut X+N
+		addi $v0 $v0 1 #on incremente le compteur
+	FinVoisinBas:
+		jr $ra
+
+CaseCourante:
+	
+	#epilogue
+	#subu $sp $sp 4
+	#sw $ra 0($sp)
+	
+	#corps de la fonction
+	
 
 
 	
