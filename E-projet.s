@@ -110,7 +110,7 @@ CreerTableau:
 ## $a1 : indice du premier élément à modifier
 ## $a2 : nouvelle valeur
 ModifieTableau:
-	# prologue (à faire : a0 a1 a2 s0 ra)
+	# prologue 
 	subu $sp $sp 20
 	sw $a0 16($sp)
 	sw $a1 12($sp)
@@ -445,6 +445,7 @@ MenucaseDetF:
 
 	
 Voisin:
+	#proposition: pour veirifier si un voisin a été visité: vérifier si sa valeur est <128
 	#prologue
 	subu $sp $sp 20
 	sw $a0 16($sp) # L'indice de la case courante
@@ -488,9 +489,12 @@ Voisin:
 		addi $v0 $v0 1 #on incremente le compteur
 	FinVoisinBas:
 		jr $ra
+		
+#Proposition: faire une ou des fonctions pour détruite des murs
 
+# Sert à passer une case du tableau qui n'a pas été visitée en case courante
 CaseCourante:
-	
+		
 	#epilogue
 	#subu $sp $sp 4
 	#sw $ra 0($sp)
@@ -498,7 +502,29 @@ CaseCourante:
 	#corps de la fonction
 	
 
-
+#Permet de marquer une case comme visitée
+## $a0 : adresse du premier élément du tableau
+## $a1 : adresse de la case à marquer comme visitée
+## $a2 : valeur de la case à marquer comme visitée
+MarqueVisite:
+	subu $sp $sp 16
+	sw $a0 12($sp)
+	sw $a1 8($sp)
+	sw $a2 4($sp)
+	sw $ra 0($sp)
+	
+	#corps de la fonction
+	addi $a2 0($a1) 128
+	jal ModifieTableau
+	
+	#epilogue
+	lw $a0 12($sp)
+	lw $a1 8($sp)
+	lw $a2 4($sp)
+	lw $ra 0($sp)
+	addu $sp $sp 16
+	
+	jr $ra
 	
 #Résolution d'un labyrinthe
 resoudreLabyrinthe:
