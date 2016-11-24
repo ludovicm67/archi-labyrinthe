@@ -60,15 +60,21 @@ genereLabyrinthe:
 	
 	move $a0 $a2			# On met $a0 à la valeur N entrée par l'utilisateur, qui a été stockée dans $a2
 	move $a1 $v0			# on fait en sorte que $a1 contienne l'adresse du premier élément du tableau
+	move $s3 $a1			# on fait en sorte que $s3 contienne aussi l'adresse du premier élément du tableau
 	jal PlacerDepartEtArrivee	# On place la case départ et arrivée de manière aléatoire
-	move $a3 $v0			# $a3 contiendra l'indice de la case de départ qui a été choisie
+	move $s4 $v0			# $s4 contiendra l'indice de la case de départ qui a été choisie
 	
 	### TEST
+	move $a0 $s4
 	move $a1 $a2
 	jal Voisin
+	move $a0 $v0
+	li $v0 1
+	syscall
 	
 	
-	
+	move $a0 $a2
+	move $a1 $s3
 	jal AfficheTableau
 	
 	j Exit
@@ -453,6 +459,7 @@ Voisin:
 	sw $a3 4($sp)
 	sw $ra 0($sp) 
 	
+	
 	#corps de la fonction
 	li $s0 0		# compteur du nombre de voisins qu'on initialise à 0
 	move $t0 $a0		# On sauvegarde la valeur de $a0 dans $t0 : X
@@ -467,7 +474,7 @@ Voisin:
 	# Traitement des differents cas
 	beq $t2 0 FinVoisinGauche # Si X%N =0 alors pas de voisin à gauche
 	move $a0 $t3 # sinon l'indice vaut N-1
-	addi $s0 $s0 4 #o n incremente le compteur de 4
+	addi $s0 $s0 4 # on incremente le compteur de 4
 	subu $sp $sp 4 # on fait de la place sur la pile pour stocker l'indice de ce voisin
 	sw $a0 0($sp) # on sauvegarde l'indice du voisin trouvé sur la pile
 	
@@ -506,11 +513,18 @@ Voisin:
 	mul $s2 $s2 4 # on calcul l'offset poure récupérer le bon voisin
 	addu $s2 $sp $s2 # on récupère la bonne adresse sur la pile
 	lw $v0 0($s2) # $v0 contient désormais l'indice d'un voisin choisi aléatoirement
-	
+		
 	addu $sp $sp $s0 # on libère la place sur la pile
 	
 	FinVoisin:
-	# @TODO : faire prologue
+	# epilogue
+	lw $a0 16($sp)
+	lw $a1 12($sp)
+	lw $a2 8($sp)
+	lw $a3 4($sp)
+	lw $ra 0($sp)
+	addu $sp $sp 20
+	
 	jr $ra
 		
 #Proposition: faire une ou des fonctions pour détruite des murs
@@ -527,26 +541,27 @@ CaseCourante:
 
 # Permet de marquer une case comme visitée
 ## $a0 : adresse du premier élément du tableau
-## $a1 : adresse de la case à marquer comme visitée
+## $a1 : indice de la case à marquer comme visitée
 ## $a2 : valeur de la case à marquer comme visitée
 MarqueVisite:
-	subu $sp $sp 16
-	sw $a0 12($sp)
-	sw $a1 8($sp)
+	# prologue
+	subu $sp $sp 8
 	sw $a2 4($sp)
 	sw $ra 0($sp)
 	
+
 	#corps de la fonction
-	lw $t0 0($a1)
-	addi $a2 $t0 128
+	mul $t0 $a1 4 # offset
+	add $t0 $a0 $t0 # adresse de l'élément à modifier
+	lw $t1 0($t0)
+	addi $a2 $t1 128
+
 	jal ModifieTableau
 	
-	#epilogue
-	lw $a0 12($sp)
-	lw $a1 8($sp)
+	# epilogue
 	lw $a2 4($sp)
 	lw $ra 0($sp)
-	addu $sp $sp 16
+	addu $sp $sp 8
 	
 	jr $ra
 
