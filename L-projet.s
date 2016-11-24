@@ -103,11 +103,59 @@ ConstruireLabyrinthe:
 	move $a3 $s1 # adresse du premier élément du tableau
 	jal Voisin
 	beq $v0 -1 FinBoucleConstruireLabyrinthe
-	#move $s3 $v0
-	#move $a0 $s1
-	#move $a1 $s3
-	#jal MarqueVisite # Marque la case courante comme visitée
-	move $a0 $s3
+	move $a0 $s1 # adresse du premier élément du tableau
+	move $a1 $v0 # indice d'un des voisins
+	jal MarqueVisite # Marque la case courante comme visitée
+	move $a0 $a1 # indice de la case courante, celle du voisin
+	
+	
+	
+	### On simule la boucle
+	move $a1 $s0 # N
+	move $a3 $s1 # adresse du premier élément du tableau
+	jal Voisin
+	beq $v0 -1 FinBoucleConstruireLabyrinthe
+	move $a0 $s1 # adresse du premier élément du tableau
+	move $a1 $v0 # indice d'un des voisins
+	jal MarqueVisite # Marque la case courante comme visitée
+	move $a0 $a1 # indice de la case courante, celle du voisin
+	
+	move $a1 $s0 # N
+	move $a3 $s1 # adresse du premier élément du tableau
+	jal Voisin
+	beq $v0 -1 FinBoucleConstruireLabyrinthe
+	move $a0 $s1 # adresse du premier élément du tableau
+	move $a1 $v0 # indice d'un des voisins
+	jal MarqueVisite # Marque la case courante comme visitée
+	move $a0 $a1 # indice de la case courante, celle du voisin
+	
+	move $a1 $s0 # N
+	move $a3 $s1 # adresse du premier élément du tableau
+	jal Voisin
+	beq $v0 -1 FinBoucleConstruireLabyrinthe
+	move $a0 $s1 # adresse du premier élément du tableau
+	move $a1 $v0 # indice d'un des voisins
+	jal MarqueVisite # Marque la case courante comme visitée
+	move $a0 $a1 # indice de la case courante, celle du voisin
+	
+	move $a1 $s0 # N
+	move $a3 $s1 # adresse du premier élément du tableau
+	jal Voisin
+	beq $v0 -1 FinBoucleConstruireLabyrinthe
+	move $a0 $s1 # adresse du premier élément du tableau
+	move $a1 $v0 # indice d'un des voisins
+	jal MarqueVisite # Marque la case courante comme visitée
+	move $a0 $a1 # indice de la case courante, celle du voisin
+	
+	move $a1 $s0 # N
+	move $a3 $s1 # adresse du premier élément du tableau
+	jal Voisin
+	beq $v0 -1 FinBoucleConstruireLabyrinthe
+	move $a0 $s1 # adresse du premier élément du tableau
+	move $a1 $v0 # indice d'un des voisins
+	jal MarqueVisite # Marque la case courante comme visitée
+	move $a0 $a1 # indice de la case courante, celle du voisin
+	
 	# pour éviter la boucle infinie lors des tests
 	j FinBoucleConstruireLabyrinthe
 	
@@ -496,12 +544,14 @@ PlacerDepartEtArrivee:
 Voisin:
 	#proposition: pour veirifier si un voisin a été visité: vérifier si sa valeur est <128
 	#prologue
-	subu $sp $sp 20
-	sw $a0 16($sp)
-	sw $a1 12($sp)
-	sw $a2 8($sp)
-	sw $a3 4($sp)
-	sw $ra 0($sp) 
+	subu $sp $sp 28
+	sw $a0 24($sp)
+	sw $a1 20($sp)
+	sw $a2 16($sp)
+	sw $a3 12($sp)
+	sw $s0 8($sp)
+	sw $s1 4($sp)
+	sw $ra 0($sp)
 	
 	
 	#corps de la fonction
@@ -572,12 +622,14 @@ Voisin:
 	
 	# epilogue
 	FinVoisin:
-	lw $a0 16($sp)
-	lw $a1 12($sp)
-	lw $a2 8($sp)
-	lw $a3 4($sp)
+	lw $a0 24($sp)
+	lw $a1 20($sp)
+	lw $a2 16($sp)
+	lw $a3 12($sp)
+	lw $s0 8($sp)
+	lw $s1 4($sp)
 	lw $ra 0($sp)
-	addu $sp $sp 20
+	addu $sp $sp 28
 	
 	jr $ra
 		
