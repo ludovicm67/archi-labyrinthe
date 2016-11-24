@@ -184,7 +184,7 @@ AfficheTableau:
 GetDigits:
 	li $v0 0 			# par défaut le premier digit vaut 0
 	move $v1 $a0 			# on met par défaut v1 à la valeur de a0
-	ble $a0 10 FinGetDigits		# Si $a0 <= 10, alors on a fini
+	blt $a0 10 FinGetDigits		# Si $a0 <= 10, alors on a fini
 	
 	# Si le nombre est supérieur ou égal à 10, ont doit changer les valeurs de sortie
 	div $v0 $a0 10			# Le premier digit est donc le résultat de la division entière de $a0 par 10

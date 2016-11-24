@@ -121,9 +121,7 @@ CreerTableau:
 ## $a2 : nouvelle valeur
 ModifieTableau:
 	# prologue 
-	subu $sp $sp 20
-	sw $a0 16($sp)
-	sw $a1 12($sp)
+	subu $sp $sp 12
 	sw $a2 8($sp)
 	sw $s0 4($sp)
 	sw $ra 0($sp)
@@ -133,13 +131,11 @@ ModifieTableau:
 	add $s0 $s0 $a0 	# là on a désormais la bonne adresse pour la case à modifier
 	sw $a2 0($s0) 		# là on met la case désirée à la nouvelle valeur
 
-	#epilogue
-	lw $a0 16($sp)
-	lw $a1 12($sp)
+	# epilogue
 	lw $a2 8($sp)
 	lw $s0 4($sp)
 	lw $ra 0($sp)
-	addu $sp $sp 20
+	addu $sp $sp 12
 	
 	jr $ra
 
@@ -228,7 +224,7 @@ AfficheTableau:
 GetDigits:
 	li $v0 0 			# par défaut le premier digit vaut 0
 	move $v1 $a0 			# on met par défaut v1 à la valeur de a0
-	ble $a0 10 FinGetDigits		# Si $a0 <= 10, alors on a fini
+	blt $a0 10 FinGetDigits		# Si $a0 <= 10, alors on a fini
 	
 	# Si le nombre est supérieur ou égal à 10, ont doit changer les valeurs de sortie
 	div $v0 $a0 10			# Le premier digit est donc le résultat de la division entière de $a0 par 10
@@ -236,7 +232,7 @@ GetDigits:
 					# (stocké dans hi lors de div, que l'on récupère avec mfhi)
 	
 	FinGetDigits:
-	# On convertit les digis en caractères, en ajoutant 0x30
+	# On convertit les digis en caractères, en ajoutant 0x30 (30 en héxadécimal, soit 48 en décimal)
 	addiu $v0 $v0 0x30 # On convertit le premier digit en caractère
 	addiu $v1 $v1 0x30 # On convertit le second digit en caractère
 	
