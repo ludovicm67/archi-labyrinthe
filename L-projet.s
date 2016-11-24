@@ -17,6 +17,12 @@ fichier:
 	
 buffer:
 	.space 1 # on initialise un buffer de taille 1
+	
+	
+### DEBUG
+debugN: .asciiz "\n@DEBUG N = "
+debugTxt: .asciiz "\n@DEBUG = "
+
 
 .text
 .globl __start
@@ -27,7 +33,7 @@ __start:
 
 # Affichage du menu
 Menu:
-	la $a0 TexteMenu		# On charge l'adresse de displayMenu dans $a0
+	la $a0 TexteMenu		# On charge l'adresse de TexteMenu dans $a0
 	li $v0 4			# On dit que l'on souhaite afficher une chaîne de caractère
 	syscall				# On effectue l'appel système
 	li $v0 5			# On demande à l'utilisateur de saisir un entier (sera stocké dans $v0)
@@ -40,8 +46,6 @@ Menu:
 
 # Génération d'un labyrinthe
 genereLabyrinthe:
-
-	jal VideFichier			# On vide d'abord le fichier
 	
 	# On demande la taille N du labyrinthe à l'utilisateur
 	DemanderN: 
@@ -51,34 +55,76 @@ genereLabyrinthe:
 	li $v0 5 			# On lit l'entier que l'utilisateur a entré
 	syscall
 	move $a0 $v0 			# On déplace la valeur que l'utilisateur a entré dans $a0
-	blt $a0 2 DemanderN 		# On teste si $a0<2 si c'est vrai on recommence à DemanderN
-	bgt $a0 99 DemanderN 		# On teste si $a0>99 si c'est vrai on recommence à DemanderN
+	blt $a0 2 DemanderN 		# Si $a0<2, alors on lui redemande
+	bgt $a0 99 DemanderN 		# Idem si $a0>99
 	
-	move $a2 $a0 			# On deplace la valeur que l'utilisateur a rentré dans $a2
-	mul $a0 $a2 $a2			# Taille du tableau à créer (N*N)
+	move $s0 $a0 			# On deplace la valeur que l'utilisateur a entré dans $s0
+	mul $a0 $s0 $s0			# Taille du tableau à créer (N*N)
 	jal CreerTableau		# $v0 contiendra l'adresse du premier élément du tableau
 	
-	move $a0 $a2			# On met $a0 à la valeur N entrée par l'utilisateur, qui a été stockée dans $a2
+	move $a0 $s0			# On met $a0 à la valeur entrée par l'utilisateur, qui a été stockée dans $s0
 	move $a1 $v0			# on fait en sorte que $a1 contienne l'adresse du premier élément du tableau
-	move $s3 $a1			# on fait en sorte que $s3 contienne aussi l'adresse du premier élément du tableau
-	jal PlacerDepartEtArrivee	# On place la case départ et arrivée de manière aléatoire
-	move $s4 $v0			# $s4 contiendra l'indice de la case de départ qui a été choisie
 	
-	### TEST
-	move $a0 $s4
-	move $a1 $a2
-	jal Voisin
-	move $a0 $v0
-	li $v0 1
-	syscall
-	
-	
-	move $a0 $a2
-	move $a1 $s3
+	jal VideFichier			# On vide d'abord le fichier
+	jal ConstruireLabyrinthe
 	jal AfficheTableau
 	
 	j Exit
 
+
+# Permet de construire le labyrinthe (casser les murs, etc...)
+# $a0 : N
+# $a1 : adresse du premier élément du tableau
+ConstruireLabyrinthe:
+	# prologue (ra s0 s1 a0 a1)
+	subu $sp $sp 20
+	sw $a0 16($sp)
+	sw $a1 12($sp)
+	sw $s0 8($sp)
+	sw $s1 4($sp)
+	sw $ra 0($sp)
+	
+	# corps de la fonction	
+	move $s0 $a0
+	move $s1 $a1
+	
+	jal PlacerDepartEtArrivee # $v0 contient l'indice de la case départ
+	move $s2 $v0
+	
+	move $a0 $s1
+	move $a1 $s2
+	jal MarqueVisite # Marque la case courante comme visitée
+	
+	
+	move $a0 $s2 # case courante = case de départ
+	
+	BoucleConstruireLabyrinthe:
+	move $a1 $s0 # N
+	move $a3 $s1 # adresse du premier élément du tableau
+	jal Voisin
+	beq $v0 -1 FinBoucleConstruireLabyrinthe
+	#move $s3 $v0
+	#move $a0 $s1
+	#move $a1 $s3
+	#jal MarqueVisite # Marque la case courante comme visitée
+	move $a0 $s3
+	# pour éviter la boucle infinie lors des tests
+	j FinBoucleConstruireLabyrinthe
+	
+	j BoucleConstruireLabyrinthe
+	
+	
+	FinBoucleConstruireLabyrinthe:
+	
+	# epilogue
+	lw $a0 16($sp)
+	lw $a1 12($sp)
+	lw $s0 8($sp)
+	lw $s1 4($sp)
+	lw $ra 0($sp)
+	addu $sp $sp 20
+	
+	jr $ra
 
 
 # Permet de créer un tableau pour stocker le labyrinthe, avec par défaut des murs partout pour chaque case (case de valeur 15)
@@ -333,7 +379,7 @@ VideFichier:
 ##           $a1 : l'adresse de la première case du tableau
 ## Sortie :  $v0 : l'indice de la case de départ
 PlacerDepartEtArrivee:
-	#prologue
+	# prologue
 	subu $sp $sp 16
 	sw $a0 12($sp)
 	sw $a1 8($sp)
@@ -439,12 +485,14 @@ PlacerDepartEtArrivee:
 	addu $sp $sp 16
 	
 	jr $ra
-	
+
+
 # Retourne les indices des différents voisins d'une case
 ## Entrée : $a0 : indice X de la case courante
 ##          $a1 : valeur de N entrée au début par l'utilisateur
+##          $a3 : adresse du premier élément du tableau contenant le labyrinthe
 ## Sortie : $v0 : l'indice d'un des voisins choisis aléatoirement (vaut -1 si aucun voisin)
-##          $v1 : valeur pour identifier kla direction (valeur à soustraire pour casser le mur)
+##          $v1 : valeur pour identifier la direction (0 : haut, 1 : droite, 2 : bas, 3 : gauche)
 Voisin:
 	#proposition: pour veirifier si un voisin a été visité: vérifier si sa valeur est <128
 	#prologue
@@ -465,40 +513,49 @@ Voisin:
 	
 	# valeurs pour les tests
 	subi $t3 $t1 1 # $t3=N-1
-	mul $t4 $t3 $t1 # $t4=N*(N-1)
+	mul $t4 $t1 $t3 # $t4=N*(N-1)
 	
 	# Traitement des differents cas
-	beq $t2 0 FinVoisinGauche # Si X%N =0 alors pas de voisin à gauche
+	beq $t2 0 FinVoisinGauche # Si X%N = 0 alors pas de voisin à gauche
 	move $a0 $t3 # sinon l'indice vaut N-1
-	addi $s0 $s0 4 # on incremente le compteur de 4
-	subu $sp $sp 4 # on fait de la place sur la pile pour stocker l'indice de ce voisin
+	addi $s0 $s0 8 # on incremente le compteur de 8
+	subu $sp $sp 8 # on fait de la place sur la pile pour stocker l'indice de ce voisin
+	li $t5 3 # direction : gauche
+	sw $t5 4($sp)
 	sw $a0 0($sp) # on sauvegarde l'indice du voisin trouvé sur la pile
 	
 	FinVoisinGauche:
 	beq $t3 $t2 FinVoisinDroite # Si X%N = N-1 alors pas de voisin à droite
 	addi $a0 $t0 1 # sinon l'indice vaut N+1
-	addi $s0 $s0 4 # on incremente le compteur de 4
-	subu $sp $sp 4 # on fait de la place sur la pile pour stocker l'indice de ce voisin
+	addi $s0 $s0 8 # on incremente le compteur de 8
+	subu $sp $sp 8 # on fait de la place sur la pile pour stocker l'indice de ce voisin
+	li $t5 1 # direction : droite
+	sw $t5 4($sp)
 	sw $a0 0($sp) # on sauvegarde l'indice du voisin trouvé sur la pile
 		
 	FinVoisinDroite:
 	blt $t0 $t1 FinVoisinHaut #Si X<N alors il n'y a pas de voisin en haut
 	sub $a0 $t0 $t1 # sinon l'indice vaut X-N
-	addi $s0 $s0 4 # on incremente le compteur de 4
-	subu $sp $sp 4 # on fait de la place sur la pile pour stocker l'indice de ce voisin
+	addi $s0 $s0 8 # on incremente le compteur de 8
+	subu $sp $sp 8 # on fait de la place sur la pile pour stocker l'indice de ce voisin
+	li $t5 0 # direction : haut
+	sw $t5 4($sp)
 	sw $a0 0($sp) # on sauvegarde l'indice du voisin trouvé sur la pile
 	
 	FinVoisinHaut:
 	bge $t0 $t4 FinVoisinBas # Si X >= N*(N-1) alors il n'y a pas de voisin en bas
 	add $a0 $t0 $t1 # Sinon l'infice vaut X+N
-	addi $s0 $s0 4 # on incremente le compteur de 4
-	subu $sp $sp 4 # on fait de la place sur la pile pour stocker l'indice de ce voisin
+	addi $s0 $s0 8 # on incremente le compteur de 8
+	subu $sp $sp 8 # on fait de la place sur la pile pour stocker l'indice de ce voisin
+	li $t5 2 # direction : bas
+	sw $t5 4($sp)
 	sw $a0 0($sp) # on sauvegarde l'indice du voisin trouvé sur la pile
 	
 	FinVoisinBas:
 	li $v0 -1 # valeur de retour par défaut
+	li $v1 -1 # valeur de retour par défaut
 	
-	div $s1 $s0 4 # on récupère le nombre de voisins ajoutés sur la pile
+	div $s1 $s0 8 # on récupère le nombre de voisins ajoutés sur la pile
 	beq $s1 $0 FinVoisin # si aucun voisin n'a été trouvé, on a pas besoin de faire ce qui suit
 	
 	li $a0 0
@@ -506,14 +563,15 @@ Voisin:
 	li $v0 42 # genere un nombre aléatoire dans $a0, 0 <= $a0 < borne sup ($a1)
 	syscall
 	move $s2 $a0
-	mul $s2 $s2 4 # on calcul l'offset poure récupérer le bon voisin
+	mul $s2 $s2 8 # on calcul l'offset poure récupérer le bon voisin
 	addu $s2 $sp $s2 # on récupère la bonne adresse sur la pile
 	lw $v0 0($s2) # $v0 contient désormais l'indice d'un voisin choisi aléatoirement
+	lw $v1 4($s2) # $v1 contient désormais la direction (0 : haut, 1 : droite, 2 : bas, 3 : gauche)
 		
 	addu $sp $sp $s0 # on libère la place sur la pile
 	
-	FinVoisin:
 	# epilogue
+	FinVoisin:
 	lw $a0 16($sp)
 	lw $a1 12($sp)
 	lw $a2 8($sp)
@@ -524,34 +582,23 @@ Voisin:
 	jr $ra
 		
 #Proposition: faire une ou des fonctions pour détruite des murs
-
-# Sert à passer une case du tableau qui n'a pas été visitée en case courante
-CaseCourante:
-		
-	#epilogue
-	#subu $sp $sp 4
-	#sw $ra 0($sp)
-	
-	#corps de la fonction
 	
 
 # Permet de marquer une case comme visitée
 ## $a0 : adresse du premier élément du tableau
 ## $a1 : indice de la case à marquer comme visitée
-## $a2 : valeur de la case à marquer comme visitée
 MarqueVisite:
 	# prologue
 	subu $sp $sp 8
 	sw $a2 4($sp)
 	sw $ra 0($sp)
-	
+
 
 	#corps de la fonction
 	mul $t0 $a1 4 # offset
 	add $t0 $a0 $t0 # adresse de l'élément à modifier
 	lw $t1 0($t0)
 	addi $a2 $t1 128
-
 	jal ModifieTableau
 	
 	# epilogue
