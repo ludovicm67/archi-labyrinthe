@@ -60,8 +60,15 @@ genereLabyrinthe:
 	
 	move $a0 $a2			# On met $a0 à la valeur N entrée par l'utilisateur, qui a été stockée dans $a2
 	move $a1 $v0			# on fait en sorte que $a1 contienne l'adresse du premier élément du tableau
-	
 	jal PlacerDepartEtArrivee	# On place la case départ et arrivée de manière aléatoire
+	move $a3 $v0			# $a3 contiendra l'indice de la case de départ qui a été choisie
+	
+	### TEST
+	move $a1 $a2
+	jal Voisin
+	
+	
+	
 	jal AfficheTableau
 	
 	j Exit
@@ -447,44 +454,63 @@ Voisin:
 	sw $ra 0($sp) 
 	
 	#corps de la fonction
-	li $v0 0		# compteur du nombre de voisins qu'on initialise à 0
+	li $s0 0		# compteur du nombre de voisins qu'on initialise à 0
 	move $t0 $a0		# On sauvegarde la valeur de $a0 dans $t0 : X
 	move $t1 $a1		# On sauvegarde la valeur de $a1 dans $t1 : N
 	div $t2 $t0 $t1
 	mfhi $t2 		# X%N
-
 	
-	# valeurs par défaut
-	li $a0 -1
-	li $a1 -1
-	li $a2 -1
-	li $a3 -1
-	
-	#valeurs pour les tests
+	# valeurs pour les tests
 	subi $t3 $t1 1 # $t3=N-1
 	mul $t4 $t3 $t1 # $t4=N*(N-1)
 	
-	#Traitement des differents cas
-	beq $t2 0 FinVoisinGauche #Si X%N =0 alors pas de voisin à gauche
-	move $a0 $t3 #sinon l'indice vaut N-1
-	addi $v0 $v0 1 #on incremente le compteur
+	# Traitement des differents cas
+	beq $t2 0 FinVoisinGauche # Si X%N =0 alors pas de voisin à gauche
+	move $a0 $t3 # sinon l'indice vaut N-1
+	addi $s0 $s0 4 #o n incremente le compteur de 4
+	subu $sp $sp 4 # on fait de la place sur la pile pour stocker l'indice de ce voisin
+	sw $a0 0($sp) # on sauvegarde l'indice du voisin trouvé sur la pile
 	
 	FinVoisinGauche:
-	beq $t3 $t2 FinVoisinDroite #Si X%N = N-1 alors pas de voisin à droite
-	addi $a1 $t0 1 #sinon l'indice vaut N+1
-	addi $v0 $v0 1 #on incremente le compteur
+	beq $t3 $t2 FinVoisinDroite # Si X%N = N-1 alors pas de voisin à droite
+	addi $a0 $t0 1 # sinon l'indice vaut N+1
+	addi $s0 $s0 4 # on incremente le compteur de 4
+	subu $sp $sp 4 # on fait de la place sur la pile pour stocker l'indice de ce voisin
+	sw $a0 0($sp) # on sauvegarde l'indice du voisin trouvé sur la pile
 		
 	FinVoisinDroite:
 	blt $t0 $t1 FinVoisinHaut #Si X<N alors il n'y a pas de voisin en haut
-	sub $a2 $t0 $t1 #sinon l'indice vaut X-N
-	addi $v0 $v0 1 #on incremente le compteur
+	sub $a0 $t0 $t1 # sinon l'indice vaut X-N
+	addi $s0 $s0 4 # on incremente le compteur de 4
+	subu $sp $sp 4 # on fait de la place sur la pile pour stocker l'indice de ce voisin
+	sw $a0 0($sp) # on sauvegarde l'indice du voisin trouvé sur la pile
 	
 	FinVoisinHaut:
 	bge $t0 $t4 FinVoisinBas # Si X >= N*(N-1) alors il n'y a pas de voisin en bas
-	add $a3 $t0 $t1 # Sinon l'infice vaut X+N
-	addi $v0 $v0 1 #on incremente le compteur
+	add $a0 $t0 $t1 # Sinon l'infice vaut X+N
+	addi $s0 $s0 4 # on incremente le compteur de 4
+	subu $sp $sp 4 # on fait de la place sur la pile pour stocker l'indice de ce voisin
+	sw $a0 0($sp) # on sauvegarde l'indice du voisin trouvé sur la pile
 	
 	FinVoisinBas:
+	li $v0 -1 # valeur de retour par défaut
+	
+	div $s1 $s0 4 # on récupère le nombre de voisins ajoutés sur la pile
+	beq $s1 $0 FinVoisin # si aucun voisin n'a été trouvé, on a pas besoin de faire ce qui suit
+	
+	li $a0 0
+	move $a1 $s1 # borne sup = $s1
+	li $v0 42 # genere un nombre aléatoire dans $a0, 0 <= $a0 < borne sup ($a1)
+	syscall
+	move $s2 $a0
+	mul $s2 $s2 4 # on calcul l'offset poure récupérer le bon voisin
+	addu $s2 $sp $s2 # on récupère la bonne adresse sur la pile
+	lw $v0 0($s2) # $v0 contient désormais l'indice d'un voisin choisi aléatoirement
+	
+	addu $sp $sp $s0 # on libère la place sur la pile
+	
+	FinVoisin:
+	# @TODO : faire prologue
 	jr $ra
 		
 #Proposition: faire une ou des fonctions pour détruite des murs
