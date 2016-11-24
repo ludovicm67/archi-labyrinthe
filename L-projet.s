@@ -18,7 +18,6 @@ fichier:
 buffer:
 	.space 1 # on initialise un buffer de taille 1
 
-
 .text
 .globl __start
 
@@ -41,6 +40,8 @@ Menu:
 
 # Génération d'un labyrinthe
 genereLabyrinthe:
+
+	jal VideFichier			# On vide d'abord le fichier
 	
 	# On demande la taille N du labyrinthe à l'utilisateur
 	DemanderN: 
@@ -57,10 +58,10 @@ genereLabyrinthe:
 	mul $a0 $a2 $a2			# Taille du tableau à créer (N*N)
 	jal CreerTableau		# $v0 contiendra l'adresse du premier élément du tableau
 	
-	move $a0 $a2			# On met $a0 à la valeur entrée par l'utilisateur, qui a été stockée dans $a2
+	move $a0 $a2			# On met $a0 à la valeur N entrée par l'utilisateur, qui a été stockée dans $a2
 	move $a1 $v0			# on fait en sorte que $a1 contienne l'adresse du premier élément du tableau
 	
-	jal VideFichier			# On vide d'abord le fichier
+	jal PlacerDepartEtArrivee	# On place la case départ et arrivée de manière aléatoire
 	jal AfficheTableau
 	
 	j Exit
@@ -96,6 +97,36 @@ CreerTableau:
 	lw $a0 4($sp)
 	lw $ra 0($sp)
 	addu $sp $sp 8
+	
+	jr $ra
+	
+
+
+# Permet de modifier une valeur d'une case du labyrinthe
+## $a0 : adresse du 1er élément du tableau
+## $a1 : indice du premier élément à modifier
+## $a2 : nouvelle valeur
+ModifieTableau:
+	# prologue 
+	subu $sp $sp 20
+	sw $a0 16($sp)
+	sw $a1 12($sp)
+	sw $a2 8($sp)
+	sw $s0 4($sp)
+	sw $ra 0($sp)
+
+	# corps de la fonction
+	mul $s0 $a1 4 		# 4*indice
+	add $s0 $s0 $a0 	# là on a désormais la bonne adresse pour la case à modifier
+	sw $a2 0($s0) 		# là on met la case désirée à la nouvelle valeur
+
+	#epilogue
+	lw $a0 16($sp)
+	lw $a1 12($sp)
+	lw $a2 8($sp)
+	lw $s0 4($sp)
+	lw $ra 0($sp)
+	addu $sp $sp 20
 	
 	jr $ra
 
@@ -238,13 +269,11 @@ EcrireDansFichier:
 	li $v0 15 		# appel système pour écrire dans un fichier
 	syscall
 	
-
 	# On ferme le fichier
 	FermerFichier:
 	move $a0 $s0 		# descripteur du fichier à fermer
 	li $v0 16 		# appel système pour fermer un fichier
 	syscall
-
 
 	# epilogue
 	lw $a0 20($sp)
@@ -290,6 +319,210 @@ VideFichier:
 	jr $ra
 
 
+# Modifie le labyrinthe pour ajouter la case de départ et de fin
+## Entrées : $a0 : le nombre de lignes/colonnes du labyrinthe entrée par l'utilisateur
+##           $a1 : l'adresse de la première case du tableau
+## Sortie :  $v0 : l'indice de la case de départ
+PlacerDepartEtArrivee:
+	#prologue
+	subu $sp $sp 16
+	sw $a0 12($sp)
+	sw $a1 8($sp)
+	sw $a2 4($sp)
+	sw $ra 0($sp)
+	
+	#corps de la fonction
+	
+	move $t0 $a0 # $t0 vaudra désormais N
+	move $t1 $a1 # $t1 vaudra l'adresse de la première case du tableau
+	
+	
+	# on génère les emplacements aléatoires des cases départ et de fin
+	## départ d (sera stockée dans $t2)
+	li $a0 0
+	move $a1 $t0 # borne sup = N
+	li $v0 42 # genere un nombre aléatoire dans $a0, 0 <= $a0 < borne sup ($a1)
+	syscall
+	move $t2 $a0
+	
+	## arrivée f (sera stockée dans $t3)
+	li $a0 0
+	move $a1 $t0 # borne sup = N
+	li $v0 42 # genere un nombre aléatoire dans $a0, 0 <= $a0 < borne sup ($a1)
+	syscall
+	move $t3 $a0
+	
+	
+	# on génère maintenant une valeur, qui vaut soit 0, 1, 2, ou 3 pour déterminer la configuration
+	li $a0 0
+	li $a1 4 # borne sup = N
+	li $v0 42 # genere un nombre aléatoire dans $a0, 0 <= $a0 < borne sup ($a1)
+	syscall
+	move $t4 $a0
+	
+	# On va donc utiliser la configuration choisie précédemment
+	## sera stocké dans $t5 l'indice de la case de départ
+	## dans $t6 l'indice de la case de fin
+	## $t7 permet juste de réaliser des parties d'opérations
+	beq $t4 0 config0
+	beq $t4 1 config1
+	beq $t4 2 config2
+	beq $t4 3 config3
+	
+	
+	# Configuration 0
+	## Début D : à gauche	D=d*N
+	## Fin F : à droite	F=f*N + N-1
+	config0:
+	mul $t5 $t2 $s0 #D
+	subi $t6 $t0 1
+	mul $t7 $t3 $t0
+	add $t6 $t6 $t7 #F
+	j ConfigOK
+	
+	# Configuration 1
+	## Début D : à droite	D=d*N + N-1
+	## Fin F : à gauche	F=f*N
+	config1:
+	subi $t5 $t0 1
+	mul $t7 $t2 $t0
+	add $t5 $t5 $t7 #D
+	mul $t6 $t3 $t0 #F
+	j ConfigOK
+	
+	# Configuration 2
+	## Début D : en haut	D=d
+	## Fin F : en bas	F=N*(N-1) + f
+	config2:
+	move $t5 $t2 #D
+	subi $t6 $t0 1
+	mul $t6 $t0 $t6
+	add $t6 $t6 $t3 #F
+	j ConfigOK
+	
+	# Configuration 3
+	## Début D : en bas	D=N*(N-1) + d
+	## Fin F : en haut	F=f
+	config3:
+	subi $t5 $t0 1
+	mul $t5 $t0 $t5
+	add $t5 $t5 $t2 #D	
+	move $t6 $t3 #F
+	
+	ConfigOK:
+	move $a0 $t1 # adresse
+	move $a1 $t5 # indice	
+	li $a2 31 # nouvelle valeur (15 (tous les murs) + 16 (casé départ))
+	jal ModifieTableau
+	
+	move $a0 $t1 # adresse
+	move $a1 $t6 # indice	
+	li $a2 47 # nouvelle valeur (15 (tous les murs) + 32 (casé fin))
+	jal ModifieTableau
+		
+	#epilogue
+	move $v0 $t5
+	
+	lw $a0 12($sp)
+	lw $a1 8($sp)
+	lw $a2 4($sp)
+	lw $ra 0($sp)
+	addu $sp $sp 16
+	
+	jr $ra
+	
+# Retourne les indices des différents voisins d'une case
+## Entrée : $a0 : indice X de la case courante
+##          $a1 : valeur de N entrée au début par l'utilisateur
+## Sortie : $v0 : l'indice d'un des voisins choisis aléatoirement (vaut -1 si aucun voisin)
+##          $v1 : valeur pour identifier kla direction (valeur à soustraire pour casser le mur)
+Voisin:
+	#proposition: pour veirifier si un voisin a été visité: vérifier si sa valeur est <128
+	#prologue
+	subu $sp $sp 20
+	sw $a0 16($sp)
+	sw $a1 12($sp)
+	sw $a2 8($sp)
+	sw $a3 4($sp)
+	sw $ra 0($sp) 
+	
+	#corps de la fonction
+	li $v0 0		# compteur du nombre de voisins qu'on initialise à 0
+	move $t0 $a0		# On sauvegarde la valeur de $a0 dans $t0 : X
+	move $t1 $a1		# On sauvegarde la valeur de $a1 dans $t1 : N
+	div $t2 $t0 $t1
+	mfhi $t2 		# X%N
+
+	
+	# valeurs par défaut
+	li $a0 -1
+	li $a1 -1
+	li $a2 -1
+	li $a3 -1
+	
+	#valeurs pour les tests
+	subi $t3 $t1 1 # $t3=N-1
+	mul $t4 $t3 $t1 # $t4=N*(N-1)
+	
+	#Traitement des differents cas
+	beq $t2 0 FinVoisinGauche #Si X%N =0 alors pas de voisin à gauche
+	move $a0 $t3 #sinon l'indice vaut N-1
+	addi $v0 $v0 1 #on incremente le compteur
+	
+	FinVoisinGauche:
+	beq $t3 $t2 FinVoisinDroite #Si X%N = N-1 alors pas de voisin à droite
+	addi $a1 $t0 1 #sinon l'indice vaut N+1
+	addi $v0 $v0 1 #on incremente le compteur
+		
+	FinVoisinDroite:
+	blt $t0 $t1 FinVoisinHaut #Si X<N alors il n'y a pas de voisin en haut
+	sub $a2 $t0 $t1 #sinon l'indice vaut X-N
+	addi $v0 $v0 1 #on incremente le compteur
+	
+	FinVoisinHaut:
+	bge $t0 $t4 FinVoisinBas # Si X >= N*(N-1) alors il n'y a pas de voisin en bas
+	add $a3 $t0 $t1 # Sinon l'infice vaut X+N
+	addi $v0 $v0 1 #on incremente le compteur
+	
+	FinVoisinBas:
+	jr $ra
+		
+#Proposition: faire une ou des fonctions pour détruite des murs
+
+# Sert à passer une case du tableau qui n'a pas été visitée en case courante
+CaseCourante:
+		
+	#epilogue
+	#subu $sp $sp 4
+	#sw $ra 0($sp)
+	
+	#corps de la fonction
+	
+
+# Permet de marquer une case comme visitée
+## $a0 : adresse du premier élément du tableau
+## $a1 : adresse de la case à marquer comme visitée
+## $a2 : valeur de la case à marquer comme visitée
+MarqueVisite:
+	subu $sp $sp 16
+	sw $a0 12($sp)
+	sw $a1 8($sp)
+	sw $a2 4($sp)
+	sw $ra 0($sp)
+	
+	#corps de la fonction
+	lw $t0 0($a1)
+	addi $a2 $t0 128
+	jal ModifieTableau
+	
+	#epilogue
+	lw $a0 12($sp)
+	lw $a1 8($sp)
+	lw $a2 4($sp)
+	lw $ra 0($sp)
+	addu $sp $sp 16
+	
+	jr $ra
 
 
 #Résolution d'un labyrinthe
@@ -298,9 +531,7 @@ resoudreLabyrinthe:
 	j Exit
 
 
-
 # Fin du programme
 Exit:
 	li $v0 10 
 	syscall
-
