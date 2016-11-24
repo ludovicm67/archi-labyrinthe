@@ -17,9 +17,6 @@ fichier:
 	
 buffer:
 	.space 1 # on initialise un buffer de taille 1
-	
-seed: .word 0xfaceb00c, 0xdeadbeef
-max_float_alea: .float 2147483647
 
 
 .text
@@ -218,7 +215,7 @@ AfficheTableau:
 GetDigits:
 	li $v0 0 			# par défaut le premier digit vaut 0
 	move $v1 $a0 			# on met par défaut v1 à la valeur de a0
-	ble $a0 10 FinGetDigits		# Si $a0 <= 10, alors on a fini
+	blt $a0 10 FinGetDigits		# Si $a0 <= 10, alors on a fini
 	
 	# Si le nombre est supérieur ou égal à 10, ont doit changer les valeurs de sortie
 	div $v0 $a0 10			# Le premier digit est donc le résultat de la division entière de $a0 par 10
@@ -260,7 +257,8 @@ EcrireDansFichier:
 	move $a0 $s0 		# descripteur du fichier
 	la $a1 buffer 		# adresse du buffer à partir duquel on doit écrire
 	lw $s1 16($sp) 		# premier caractère à écrire
-	sb $s1 ($a1)		# on place notre caractère dans le buffer
+	sb $s1 ($a1)		# on place notre caractère
+	 dans le buffer
 	li $a2 1 		# Taille du buffer = 1 (on écrit caractère par caractère)
 	li $v0 15 		# appel système pour écrire dans un fichier
 	syscall
@@ -492,37 +490,81 @@ Voisin:
 		
 #Proposition: faire une ou des fonctions pour détruite des murs
 
-# Sert à passer une case du tableau qui n'a pas été visitée en case courante
-CaseCourante:
-		
-	#epilogue
-	#subu $sp $sp 4
-	#sw $ra 0($sp)
-	
-	#corps de la fonction
-	
+## Fonction qui sert à détruire les murs
+# $a1 : Indice de la case courante actuelle
+# $a2 : Indice de la prochaine case courante
+# $a3 : Valeur de la direction dans laquelle on va
 
-#Permet de marquer une case comme visitée
-## $a0 : adresse du premier élément du tableau
-## $a1 : adresse de la case à marquer comme visitée
-## $a2 : valeur de la case à marquer comme visitée
-MarqueVisite:
+#prologue
 	subu $sp $sp 16
-	sw $a0 12($sp)
-	sw $a1 8($sp)
-	sw $a2 4($sp)
+	sw $a1 12($sp)
+	sw $a2 8($sp)
+	sw $a3 4($sp)
+	sw $ra 0($sp)
+
+#corps de la fonction
+	mul $t0 $a1 4 # offset1
+	mul $t1 $a2 4 # offset2
+	add $t0 $a0 $t0 #dans $t0 on a l'adresse de la case courante actuelle
+	add $t1 $a0 $t1 #dans $t1 on a l'adresse de la prochaine case courante
+	lw $s1 0($t0) #on stocke la valeur de la case courante actuelle du tableau dans $s1 
+	lw $s2 0($t1) #on stocke la valeur de la prochaine case courante dans $s2
+	move $a1 $t0 #On deplace l'adresse de la case courante actuelle dans $a1
+	move $a1 $t1 #On deplace l'adresse de la prochaine case courante dans $a1
+	beq $a3 0 AllerHaut #Si $a0  vaut 0 cela veut dire qu'on doit déplacer la case courante en haut
+	beq $a3 1 AllerDroite #Si $a0  vaut 1 cela veut dire qu'on doit déplacer la case courante à droite
+	beq $a3 2 AllerBas #Si $a0  vaut 2 cela veut dire qu'on doit déplacer la case courante en bas
+	beq $a3 3 AllerGauche #Si $a0  vaut 3 cela veut dire qu'on doit déplacer la case courante à gauche
+	AllerHaut:
+		subi $a2 $s1 1 #On soustrait 1 à la valeur de la case courante 
+		jal ModifieTableau #On detruit le mur du haut de la case courante
+		subi $a2 $s2 4 #On soustrait 4 (100 en binaire) à la valeur de la nouvelle case courante
+		jal ModifieTableau #On detruit le mur du bas de la nouvelle case courante
+	AllerDroite:
+		subi $a2 $s1 2 #On soustrait 2 (10 en binaire) à la valeur de la case courante 
+		jal ModifieTableau #On detruit le mur à droite de la case courante
+		subi $a2 $s2 8 #On soustrait 8 (1000 en binaire) à la valeur de la nouvelle case courante
+		jal ModifieTableau #On detruit le mur de gauche de la nouvelle case courante
+	AllerGauche:
+		subi $a2 $s1 8 #On soustrait 8 (1000 en binaire) à la valeur de la case courante 
+		jal ModifieTableau #On detruit le mur à gauche de la case courante
+		subi $a2 $s2 2 #On soustrait 2 (10 en binaire) à la valeur de la nouvelle case courante
+		jal ModifieTableau #On detruit le mur de droite de la nouvelle case courante
+	AllerBas:
+		subi $a2 $s1 4  #On soustrait 4 (100 en binaire) à la valeur de la case courante 
+		jal ModifieTableau #On detruit le mur du bas de la case courante
+		subi $a2 $s2 1 #On soustrait 1 à la valeur de la nouvelle case courante
+		jal ModifieTableau #On detruit le mur du haut de la nouvelle case courante
+	
+	#epilogue
+	lw $a1 12($sp)
+	lw $a2 8($sp)
+	lw $a3 4($sp)
+	lw $ra 0($sp)
+	addu $sp $sp 16
+	
+	jr $ra
+
+# Permet de marquer une case comme visitée
+## $a0 : adresse du premier élément du tableau
+## $a1 : indice de la case à marquer comme visitée
+MarqueVisite:
+	subu $sp $sp 12
+	sw $a0 8($sp)
+	sw $a1 4($sp)
 	sw $ra 0($sp)
 	
 	#corps de la fonction
-	addi $a2 0($a1) 128
-	jal ModifieTableau
+	mul $t0 $a1 4 # offset
+	add $t0 $a0 $t0 #dans $t0 on a l'adresse de la case à modifier
+	lw $t1 0($t0) #on stocke la valeur de la case du tableau dans $t0 
+	addi $a2 $t1 128 #on ajoute 128 à cette valeur
+	jal ModifieTableau #on modifie le tableau
 	
 	#epilogue
-	lw $a0 12($sp)
-	lw $a1 8($sp)
 	lw $a2 4($sp)
 	lw $ra 0($sp)
-	addu $sp $sp 16
+	addu $sp $sp 8
 	
 	jr $ra
 	
