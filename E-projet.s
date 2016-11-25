@@ -257,8 +257,7 @@ EcrireDansFichier:
 	move $a0 $s0 		# descripteur du fichier
 	la $a1 buffer 		# adresse du buffer à partir duquel on doit écrire
 	lw $s1 16($sp) 		# premier caractère à écrire
-	sb $s1 ($a1)		# on place notre caractère
-	 dans le buffer
+	sb $s1 ($a1)		# on place notre caractère dans le buffer
 	li $a2 1 		# Taille du buffer = 1 (on écrit caractère par caractère)
 	li $v0 15 		# appel système pour écrire dans un fichier
 	syscall
@@ -444,13 +443,13 @@ TestVisite:
 	#corps de la fonction
 	mul $a1 $a1 4 # 4*indice
 	add $a1 $a1 $a0 # $a1 contient l'adresse de la case
-	move $s1 0($a1) # on met la valeur de la case dans $s1
+	sw $s1 0($a1) # on met la valeur de la case dans $s1
 	li $t1 0 #on initialise la valeur test $t1 à 0
 	ble $s1 128 Fin # on test si la valeur de la case est <128
 	li $t1 1 #si c'est vrai on change la valeur de $t1 en 1
 	Fin: #sinon on jump à fin
 	move $v0 $t1 #on met la valeur de $t1 dans $v0
-	
+
 	#epilogue
 	lw $a0 4($sp)
 	lw $ra 0($sp)
@@ -478,6 +477,7 @@ Voisin:
 	li $s0 0		# compteur du nombre de voisins qu'on initialise à 0
 	move $t0 $a0		# On sauvegarde la valeur de $a0 dans $t0 : X
 	move $t1 $a1		# On sauvegarde la valeur de $a1 dans $t1 : N
+	move $t6 $a3 		# On sauvegarde la valeur de $a3 dans $t6 : adresse du premier élément du tableau
 	div $t2 $t0 $t1
 	mfhi $t2 		# X%N
 	
@@ -487,8 +487,13 @@ Voisin:
 	
 	# Traitement des differents cas
 	beq $t2 0 FinVoisinGauche # Si X%N = 0 alors pas de voisin à gauche
-	
-	move $a0 $t3 # sinon l'indice vaut N-1
+	move $a2 $t3 # sinon l'indice vaut N-1 
+	move $a0 $t6 #On met l'adresse du premier élément du tableau dans $a0
+	move $a1 $t3 #On met l'indice de la case voisine dans $a1
+	jal TestVisite
+	move $a0 $t0 #On remet la bonne valeur dans $a0
+	move $a1 $t1 #On remet la bonne valeur dans $a1
+	beq $v0 1 FinVoisinGauche #Si le voisin a été visité on incremente pas
 	addi $s0 $s0 8 # on incremente le compteur de 8
 	subu $sp $sp 8 # on fait de la place sur la pile pour stocker l'indice de ce voisin
 	li $t5 3 # direction : gauche
@@ -498,6 +503,12 @@ Voisin:
 	FinVoisinGauche:
 	beq $t3 $t2 FinVoisinDroite # Si X%N = N-1 alors pas de voisin à droite
 	addi $a0 $t0 1 # sinon l'indice vaut N+1
+	move $a0 $t6 #On met l'adresse du premier élément du tableau dans $a0
+	move $a1 $t3 #On met l'indice de la case voisine dans $a1
+	jal TestVisite
+	move $a0 $t0 #On remet la bonne valeur dans $a0
+	move $a1 $t1 #On remet la bonne valeur dans $a1
+	beq $v0 1 FinVoisinGauche #Si le voisin a été visité on incremente pas
 	addi $s0 $s0 8 # on incremente le compteur de 8
 	subu $sp $sp 8 # on fait de la place sur la pile pour stocker l'indice de ce voisin
 	li $t5 1 # direction : droite
@@ -507,6 +518,12 @@ Voisin:
 	FinVoisinDroite:
 	blt $t0 $t1 FinVoisinHaut #Si X<N alors il n'y a pas de voisin en haut
 	sub $a0 $t0 $t1 # sinon l'indice vaut X-N
+	move $a0 $t6 #On met l'adresse du premier élément du tableau dans $a0
+	move $a1 $t3 #On met l'indice de la case voisine dans $a1
+	jal TestVisite
+	move $a0 $t0 #On remet la bonne valeur dans $a0
+	move $a1 $t1 #On remet la bonne valeur dans $a1
+	beq $v0 1 FinVoisinGauche #Si le voisin a été visité on incremente pas
 	addi $s0 $s0 8 # on incremente le compteur de 8
 	subu $sp $sp 8 # on fait de la place sur la pile pour stocker l'indice de ce voisin
 	li $t5 0 # direction : haut
@@ -516,6 +533,12 @@ Voisin:
 	FinVoisinHaut:
 	bge $t0 $t4 FinVoisinBas # Si X >= N*(N-1) alors il n'y a pas de voisin en bas
 	add $a0 $t0 $t1 # Sinon l'infice vaut X+N
+	move $a0 $t6 #On met l'adresse du premier élément du tableau dans $a0
+	move $a1 $t3 #On met l'indice de la case voisine dans $a1
+	jal TestVisite
+	move $a0 $t0 #On remet la bonne valeur dans $a0
+	move $a1 $t1 #On remet la bonne valeur dans $a1
+	beq $v0 1 FinVoisinGauche #Si le voisin a été visité on incremente pas
 	addi $s0 $s0 8 # on incremente le compteur de 8
 	subu $sp $sp 8 # on fait de la place sur la pile pour stocker l'indice de ce voisin
 	li $t5 2 # direction : bas
