@@ -95,8 +95,6 @@ ConstruireLabyrinthe:
 	move $a2 $a0 # $a2 = N
 
 	jal PlacerDepartEtArrivee # $v0 contient l'indice de la case départ
-#DEBUG
-li $v0 21
 
 	move $a1 $v0 # $a1 = case courante (initialisée à la case de départ)
 	move $a0 $s1 # $a0 = adresse du premier élément du tableau
@@ -109,26 +107,8 @@ li $v0 21
 	jal MarqueVisite # Marque la case courante comme visitée
 
 
-
-	### On simule la boucle
-	jal Voisin
-	beq $v0 -1 FinBoucleConstruireLabyrinthe
-	move $a1 $v0 # indice d'un des voisins
-	jal MarqueVisite # Marque la case courante comme visitée
-
-	jal Voisin
-	beq $v0 -1 FinBoucleConstruireLabyrinthe
-	move $a1 $v0 # indice d'un des voisins
-	jal MarqueVisite # Marque la case courante comme visitée
-
-	jal Voisin
-	beq $v0 -1 FinBoucleConstruireLabyrinthe
-	move $a1 $v0 # indice d'un des voisins
-	jal MarqueVisite # Marque la case courante comme visitée
-
-
 	# pour éviter la boucle infinie lors des tests
-	j FinBoucleConstruireLabyrinthe
+	#j FinBoucleConstruireLabyrinthe
 
 	j BoucleConstruireLabyrinthe
 
@@ -524,17 +504,6 @@ Voisin:
 	sw $s1 4($sp)
 	sw $ra 0($sp)
 
-	### DEBUG
-	move $t9 $a0
-	la $a0 debugEntree
-	li $v0 4
-	syscall
-	move $a0 $a1
-	li $v0 1
-	syscall
-	move $a0 $t9
-	### Fin : DEBUG
-
 	# corps de la fonction
 	li $s0 0			# Compteur du nombre de voisins, qu'on initialise à 0
 	move $t0 $a1		# X
@@ -548,39 +517,47 @@ Voisin:
 
 	# Traitement des differents cas
 	beq $t2 0 FinVoisinGauche # Si X%N = 0 alors pas de voisin à gauche
-	subi $a0 $t0 1 # sinon l'indice vaut X-1
+	subi $a1 $t0 1 # sinon l'indice vaut X-1
+	jal TesteVisite # on vérifie si la case a déjà été visitée
+	beq $v0 1 FinVoisinGauche # si c'est le cas, ce voisin n'est plus disponible
 	addi $s0 $s0 8 # on incremente le compteur de 8
 	subu $sp $sp 8 # on fait de la place sur la pile pour stocker l'indice de ce voisin
 	li $t5 3 # direction : gauche
 	sw $t5 4($sp)
-	sw $a0 0($sp) # on sauvegarde l'indice du voisin trouvé sur la pile
+	sw $a1 0($sp) # on sauvegarde l'indice du voisin trouvé sur la pile
 	FinVoisinGauche:
 
 	beq $t3 $t2 FinVoisinDroite # Si X%N = N-1 alors pas de voisin à droite
-	addi $a0 $t0 1 # sinon l'indice vaut X+1
+	addi $a1 $t0 1 # sinon l'indice vaut X+1
+	jal TesteVisite # on vérifie si la case a déjà été visitée
+	beq $v0 1 FinVoisinDroite # si c'est le cas, ce voisin n'est plus disponible
 	addi $s0 $s0 8 # on incremente le compteur de 8
 	subu $sp $sp 8 # on fait de la place sur la pile pour stocker l'indice de ce voisin
 	li $t5 1 # direction : droite
 	sw $t5 4($sp)
-	sw $a0 0($sp) # on sauvegarde l'indice du voisin trouvé sur la pile
+	sw $a1 0($sp) # on sauvegarde l'indice du voisin trouvé sur la pile
 	FinVoisinDroite:
 
 	blt $t0 $t1 FinVoisinHaut #Si X<N alors il n'y a pas de voisin en haut
-	sub $a0 $t0 $t1 # sinon l'indice vaut X-N
+	sub $a1 $t0 $t1 # sinon l'indice vaut X-N
+	jal TesteVisite # on vérifie si la case a déjà été visitée
+	beq $v0 1 FinVoisinHaut # si c'est le cas, ce voisin n'est plus disponible
 	addi $s0 $s0 8 # on incremente le compteur de 8
 	subu $sp $sp 8 # on fait de la place sur la pile pour stocker l'indice de ce voisin
 	li $t5 0 # direction : haut
 	sw $t5 4($sp)
-	sw $a0 0($sp) # on sauvegarde l'indice du voisin trouvé sur la pile
+	sw $a1 0($sp) # on sauvegarde l'indice du voisin trouvé sur la pile
 	FinVoisinHaut:
 
 	bge $t0 $t4 FinVoisinBas # Si X >= N*(N-1) alors il n'y a pas de voisin en bas
-	add $a0 $t0 $t1 # Sinon l'infice vaut X+N
+	add $a1 $t0 $t1 # Sinon l'infice vaut X+N
+	jal TesteVisite # on vérifie si la case a déjà été visitée
+	beq $v0 1 FinVoisinBas # si c'est le cas, ce voisin n'est plus disponible
 	addi $s0 $s0 8 # on incremente le compteur de 8
 	subu $sp $sp 8 # on fait de la place sur la pile pour stocker l'indice de ce voisin
 	li $t5 2 # direction : bas
 	sw $t5 4($sp)
-	sw $a0 0($sp) # on sauvegarde l'indice du voisin trouvé sur la pile
+	sw $a1 0($sp) # on sauvegarde l'indice du voisin trouvé sur la pile
 	FinVoisinBas:
 
 	li $v0 -1 # valeur de retour par défaut
@@ -596,8 +573,8 @@ Voisin:
 	move $s2 $a0
 	mul $s2 $s2 8 # on calcul l'offset pour récupérer le bon voisin
 	addu $s2 $sp $s2 # on récupère la bonne adresse sur la pile
-	lw $v0 0($s2) # $v0 contient désormais l'indice d'un voisin choisi aléatoirement
 	lw $v1 4($s2) # $v1 contient désormais la direction (0 : haut, 1 : droite, 2 : bas, 3 : gauche)
+	lw $v0 0($s2) # $v0 contient désormais l'indice d'un voisin choisi aléatoirement
 
 	### DEBUG
 	move $t8 $v0
@@ -656,16 +633,47 @@ MarqueVisite:
 	add $a1 $a0 $a1 		# adresse de l'élément à modifier
 	lw $a0 0($a1)
 	bge $a0 128 FinMarqueVisite
-	addi $a2 $a0 128
 	lw $a0 12($sp) # récupération de la valeur originale de $a0
 	lw $a1 8($sp) # récupération de la valeur originale de $a1
+	addi $a2 $a0 128
 	jal ModifieTableau
 
 	# epilogue
 	FinMarqueVisite:
+	lw $a0 12($sp)
+	lw $a1 8($sp)
 	lw $a2 4($sp)
 	lw $ra 0($sp)
 	addu $sp $sp 16
+
+	jr $ra
+
+
+# Permet voir si une case a été visitée ou non
+## Entrées : $a0 : adresse du premier élément du tableau
+##           $a1 : indice de la case à marquer comme visitée
+## Sortie :  $v0 (=1 si visitée, =0 sinon)
+TesteVisite:
+	# prologue
+	subu $sp $sp 12
+	sw $a0 8($sp)
+	sw $a1 4($sp)
+	sw $ra 0($sp)
+
+	# corps de la fonction
+	mul $a1 $a1 4 				# offset
+	add $a1 $a0 $a1 			# adresse de la case à tester
+	lw $a0 0($a1)				# valeur de la case à tester
+	li $v0 0					# on dit par défaut que la case n'a pas été visitée
+	blt $a0 128 FinTesteVisite 	# si la valeur de la case est effectivement < 128, on a fini
+	li $v0 1					# sinon c'est que la case a été visitée
+
+	# epilogue
+	FinTesteVisite:
+	lw $a0 8($sp)
+	lw $a1 4($sp)
+	lw $ra 0($sp)
+	addu $sp $sp 12
 
 	jr $ra
 
