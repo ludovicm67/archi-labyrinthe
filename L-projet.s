@@ -19,16 +19,6 @@ buffer:
     .space 1            # on initialise un buffer de taille 1
 
 
-### DEBUG
-debugEntree: .asciiz "\n\n@DEBUG Entrée = "
-debugN: .asciiz "\n@DEBUG N = "
-debugTxt: .asciiz "\n@DEBUG = "
-debugVoisinG: .asciiz "\n@DEBUG = VOISIN gauche"
-debugVoisinD: .asciiz "\n@DEBUG = VOISIN droite"
-debugVoisinH: .asciiz "\n@DEBUG = VOISIN haut"
-debugVoisinB: .asciiz "\n@DEBUG = VOISIN bas"
-
-
 .text
 .globl __start
 
@@ -110,8 +100,6 @@ ConstruireLabyrinthe:
     jal MarqueVisite # Marque la case courante comme visitée
     lw $a2 16($sp) # on récupère la valeur de N (stockée dans la pile, originalement dans $a0)
     j BoucleConstruireLabyrinthe
-
-
 
     # epilogue
     FinBoucleConstruireLabyrinthe:
@@ -236,7 +224,6 @@ AfficheTableau:
     sw $a2 4($sp)
     sw $ra 0($sp)
 
-
     # corps de la fonction
     move $s0 $a0        # $s0 : nombre de cases par ligne/colonne
     mul $t0 $a0 $a0     # $t0 : nombre total de cases
@@ -283,7 +270,6 @@ AfficheTableau:
     addu $t1 $t1 1              # on incrémente $t1 de 1 (on avance d'une colonne)
 
     j BoucleAfficheTableau
-
 
     # prologue
     FinBoucleAfficheTableau:
@@ -651,32 +637,7 @@ DetruireMurs:
 
     move $s2 $a1 # On sauvegarde l'indice de la case précédente dans $s2
     move $s3 $a2 # On sauvegarde l'indice de la nouvelle case dans $s3
-### DEBUG
-move $t9 $a0
 
-la $a0 debugEntree
-li $v0 4
-syscall
-move $a0 $s2
-li $v0 1
-syscall
-
-la $a0 debugN
-li $v0 4
-syscall
-move $a0 $a3
-li $v0 1
-syscall
-
-la $a0 debugTxt
-li $v0 4
-syscall
-move $a0 $s3
-li $v0 1
-syscall
-
-move $a0 $t9
-### Fin: DEBUG
     beq $a3 0 AllerHaut         # Si $a3 vaut 0 cela veut dire que l'on se déplace en haut
     beq $a3 1 AllerDroite       # Si $a3 vaut 1 cela veut dire que l'on se déplace à droite
     beq $a3 2 AllerBas          # Si $a3 vaut 2 cela veut dire que l'on se déplace en bas
