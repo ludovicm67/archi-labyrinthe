@@ -40,9 +40,9 @@ function is_ending_point(value) {
 function can_i_go_out_this_way(value) {
   return extract_powerof_two(value, 64)
 }
-NR == 1 { x = $1; for (i=0; i < 3*x+1; ++i) printf "@"; print ""}
+NR == 1 { x = $1; for (i=0; i < 3*x+1; ++i) printf "█"; print ""}
 NR > 1 {
-  printf "@"
+  printf "█"
   for (i=1; i<=NF; i++) {
     if (is_starting_point($i))
       printf "XX"
@@ -55,18 +55,18 @@ NR > 1 {
         else
           printf "  "
     if (has_right($i))
-      printf "@"
+      printf "█"
     else
       printf " "
   }
   print ""
   for (i=1; i<=NF; i++) {
-    printf "@"
+    printf "█"
     if (has_bottom($i))
-      printf "@@"
+      printf "██"
     else
       printf "  "
   }
-  print "@"
+  print "█"
 }
 ' $1
