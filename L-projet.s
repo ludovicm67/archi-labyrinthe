@@ -9,11 +9,11 @@ TexteDemanderN:
 RetChar:
     .asciiz "\n"
 
-Espace:
-    .asciiz " "
+TexteDemanderNom:
+    .asciiz "Entrez un nom de fichier SVP : "
 
 fichier:
-    .asciiz "azeaze.txt"
+    .space 1024
 
 buffer:
     .space 1            # on initialise un buffer de taille 1
@@ -26,8 +26,37 @@ buffer:
 __start:
 
 
+
 # Affichage du menu
 Menu:
+
+	la $a0 TexteDemanderNom			# on charge l'adresse de TexteDemanderNom dans $a0
+	li $v0 4						# On dit que l'on souhaite afficher une chaine de caractères
+	syscall							# On effectue l'appel système
+
+	la $a0 fichier
+	li $a1 1024
+	li $v0 8
+	syscall
+
+	move $t0 $a0
+	EnleveRetChar:
+	lb $a0 0($t0)					# on récupère le caractère courant
+	beq $a0 10 FinEnleveRetChar		# si on a '\n', alors on sort de la boucle
+	addi $t0 $t0 1					# sinon on incrémente l'offset
+	j EnleveRetChar 				# ...et on rerentre dans la boucle
+
+	FinEnleveRetChar:
+	li $t1 46 						# caractère '.' en ascii
+	li $t2 116 						# caractère 't' en ascii
+	li $t3 120 						# caractère 'x' en ascii
+	sb $t1 0($t0)					# on écrit '.' à la suite du nom du fichier
+	sb $t2 1($t0)					# on écrit 't' à la suite du nom du fichier
+	sb $t3 2($t0)					# on écrit 'x' à la suite du nom du fichier
+	sb $t2 3($t0)					# on écrit 't' à la suite du nom du fichier
+	sb $0 4($t0)					# on écrit '\0' à la suite du nom du fichier
+
+
     la $a0 TexteMenu    # On charge l'adresse de TexteMenu dans $a0
     li $v0 4            # On dit que l'on souhaite afficher une chaîne de caractère
     syscall             # On effectue l'appel système
