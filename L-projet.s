@@ -9,11 +9,11 @@ TexteDemanderN:
 RetChar:
     .asciiz "\n"
 
-Espace:
-    .asciiz " "
+TexteDemanderNom:
+    .asciiz "Entrez un nom de fichier SVP : "
 
 fichier:
-    .asciiz "azeaze.txt"
+    .space 1024
 
 buffer:
     .space 1            # on initialise un buffer de taille 1
@@ -26,8 +26,37 @@ buffer:
 __start:
 
 
+
 # Affichage du menu
 Menu:
+
+	la $a0 TexteDemanderNom			# on charge l'adresse de TexteDemanderNom dans $a0
+	li $v0 4						# On dit que l'on souhaite afficher une chaine de caractères
+	syscall							# On effectue l'appel système
+
+	la $a0 fichier
+	li $a1 1024
+	li $v0 8
+	syscall
+
+	move $t0 $a0
+	EnleveRetChar:
+	lb $a0 0($t0)					# on récupère le caractère courant
+	beq $a0 10 FinEnleveRetChar		# si on a '\n', alors on sort de la boucle
+	addi $t0 $t0 1					# sinon on incrémente l'offset
+	j EnleveRetChar 				# ...et on rerentre dans la boucle
+
+	FinEnleveRetChar:
+	li $t1 46 						# caractère '.' en ascii
+	li $t2 116 						# caractère 't' en ascii
+	li $t3 120 						# caractère 'x' en ascii
+	sb $t1 0($t0)					# on écrit '.' à la suite du nom du fichier
+	sb $t2 1($t0)					# on écrit 't' à la suite du nom du fichier
+	sb $t3 2($t0)					# on écrit 'x' à la suite du nom du fichier
+	sb $t2 3($t0)					# on écrit 't' à la suite du nom du fichier
+	sb $0 4($t0)					# on écrit '\0' à la suite du nom du fichier
+
+
     la $a0 TexteMenu    # On charge l'adresse de TexteMenu dans $a0
     li $v0 4            # On dit que l'on souhaite afficher une chaîne de caractère
     syscall             # On effectue l'appel système
@@ -71,12 +100,13 @@ genereLabyrinthe:
 # $a0 : N
 # $a1 : adresse du premier élément du tableau
 ConstruireLabyrinthe:
-    # prologue (ra s0 s1 a0 a1)
-    subu $sp $sp 20
-    sw $a0 16($sp)
-    sw $a1 12($sp)
-    sw $s0 8($sp)
-    sw $s1 4($sp)
+    # prologue
+    subu $sp $sp 24
+    sw $a0 20($sp)
+    sw $a1 16($sp)
+    sw $s0 12($sp)
+    sw $s1 8($sp)
+    sw $s2 4($sp) # compteur
     sw $ra 0($sp)
 
     # corps de la fonction
@@ -90,28 +120,46 @@ ConstruireLabyrinthe:
     move $a1 $v0 # $a1 = case courante (initialisée à la case de départ)
     jal MarqueVisite # Marque la case courante comme visitée
 
+    subu $sp $sp 4
+    sw $a1 0($sp)
+    li $s2 4 # compteur
+
     BoucleConstruireLabyrinthe:
     jal Voisin
-    beq $v0 -1 FinBoucleConstruireLabyrinthe
+    beq $v0 -1 MarcheArriere
     move $a2 $v0
     move $a3 $v1
     jal DetruireMurs
     move $a1 $a2 # indice d'un des voisins
     jal MarqueVisite # Marque la case courante comme visitée
-    lw $a2 16($sp) # on récupère la valeur de N (stockée dans la pile, originalement dans $a0)
+    move $a2 $s0
+    subu $sp $sp 4
+    sw $a1 0($sp)
+    addi $s2 $s2 4
+
     j BoucleConstruireLabyrinthe
+
+    MarcheArriere:
+    addu $sp $sp 4 # case bloquée
+    subi $s2 $s2 4
+    ble $s2 4 FinBoucleConstruireLabyrinthe
+    lw $a1 0($sp)
+    j BoucleConstruireLabyrinthe
+
 
     # epilogue
     FinBoucleConstruireLabyrinthe:
+    addu $sp $sp 4 # case de départ
     mul $a1 $a2 $a2 # $a1 = taille tu tableau (N*N)
     jal EnleverViste
 
-    lw $a0 16($sp)
-    lw $a1 12($sp)
-    lw $s0 8($sp)
-    lw $s1 4($sp)
+    lw $a0 20($sp)
+    lw $a1 16($sp)
+    lw $s0 12($sp)
+    lw $s1 8($sp)
+    lw $s2 4($sp) # compteur
     lw $ra 0($sp)
-    addu $sp $sp 20
+    addu $sp $sp 24
 
     jr $ra
 
@@ -513,13 +561,14 @@ PlacerDepartEtArrivee:
 ##          $v1 : valeur pour identifier la direction (0 : haut, 1 : droite, 2 : bas, 3 : gauche)
 Voisin:
     # prologue
-    subu $sp $sp 28
-    sw $a0 24($sp)
-    sw $a1 20($sp)
-    sw $a2 16($sp)
-    sw $a3 12($sp)
-    sw $s0 8($sp)
-    sw $s1 4($sp)
+    subu $sp $sp 32
+    sw $a0 28($sp)
+    sw $a1 24($sp)
+    sw $a2 20($sp)
+    sw $a3 16($sp)
+    sw $s0 12($sp)
+    sw $s1 8($sp)
+    sw $s2 4($sp)
     sw $ra 0($sp)
 
     # corps de la fonction
@@ -598,14 +647,15 @@ Voisin:
 
     # epilogue
     FinVoisin:
-    lw $a0 24($sp)
-    lw $a1 20($sp)
-    lw $a2 16($sp)
-    lw $a3 12($sp)
-    lw $s0 8($sp)
-    lw $s1 4($sp)
+    lw $a0 28($sp)
+    lw $a1 24($sp)
+    lw $a2 20($sp)
+    lw $a3 16($sp)
+    lw $s0 12($sp)
+    lw $s1 8($sp)
+    lw $s2 4($sp)
     lw $ra 0($sp)
-    addu $sp $sp 28
+    addu $sp $sp 32
 
     jr $ra
 
