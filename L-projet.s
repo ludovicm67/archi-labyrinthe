@@ -804,7 +804,91 @@ TesteVisite:
 
 # Résolution d'un labyrinthe
 resoudreLabyrinthe:
-    ## à compléter
+
+	la $a0 fichier
+	li $v0 4
+	syscall
+
+
+
+	# Ouvrir le fichier
+	la $a0 fichier      # nom du fichier
+	li $a1 0        # on ouvre le fichier en écriture (0 : lecture; 1 écriture, ... 9 : écriture à la fin)
+	li $a2 0        # pas besoin de mode (ignoré)
+	li $v0 13       # appel système pour ouvrir un fichier
+	syscall
+	move $s0 $v0        # sauvegarde du descripteur du fichier
+
+	# Lecture du fichier
+	move $a0 $s0        # descripteur du fichier
+	la $a1 buffer       # adresse du buffer à partir duquel on doit écrire
+	li $a2 1        	# Taille du buffer = 1
+	li $v0 14       	# appel système pour lire un fichier
+	syscall
+
+	lb $s1 0($a1) 		# premier digit
+	subiu $s1 $s1 0x30 	# on le convertit en entier
+	mul $s1 $s1 10		# on le multiplie par 10, car c'est le chiffre des dizaine
+
+	li $v0 14       	# appel système pour lire un fichier
+	syscall
+
+	lb $s2 0($a1) 		# deuxième digit
+	subiu $s2 $s2 0x30 	# on le convertit en entier
+
+
+	addu $s3 $s1 $s2 	# $s3 contient la valeur de N
+
+	mul $s3 $s3 $s3		# $s3 = N*N
+	mul $a0 $s3 4   	# taille du tableau à créer en octets (N*N*4 octets)
+    li $v0 9        	# on récupère l'adresse du premier élément du tableau
+    syscall         	# $v0 contiendra donc l'adresse du premier élément du tableau
+
+    move $t0 $v0		# Adresse du premier élément du tableau
+    addu $t1 $t0 $a0	# Adresse de fin du tableau
+
+
+    BoucleImporterTableau:
+    beq $t0 $t1 FinBoucleImporterTableau
+
+	move $a0 $s0        # descripteur du fichier
+	la $a1 buffer       # adresse du buffer à partir duquel on doit écrire
+	li $a2 1        	# Taille du buffer = 1
+    li $v0 14			# appel système pour lire un fichier
+    syscall
+
+    lb $t2 0($a1)		# caractère courant
+
+    blt $t2 48 BoucleImporterTableau
+    bgt $t2 57 BoucleImporterTableau
+
+    move $a0 $t2
+    li $v0 11
+    syscall
+
+    move $a0 $s0        # descripteur du fichier
+	la $a1 buffer       # adresse du buffer à partir duquel on doit écrire
+	li $a2 1        	# Taille du buffer = 1
+    li $v0 14			# appel système pour lire un fichier
+    syscall
+
+    lb $t2 0($a1)		# caractère courant
+    move $a0 $t2
+    li $v0 11
+    syscall
+
+    addiu $t0 $t0 4
+    j BoucleImporterTableau
+
+    FinBoucleImporterTableau:
+
+
+	# On ferme le fichier
+	move $a0 $s0        # descripteur du fichier à fermer
+	li $v0 16       	# appel système pour fermer un fichier
+	syscall
+
+
     j Exit
 
 
