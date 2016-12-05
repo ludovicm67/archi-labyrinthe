@@ -30,31 +30,31 @@ __start:
 # Affichage du menu
 Menu:
 
-	la $a0 TexteDemanderNom			# on charge l'adresse de TexteDemanderNom dans $a0
-	li $v0 4						# On dit que l'on souhaite afficher une chaine de caractères
-	syscall							# On effectue l'appel système
+    la $a0 TexteDemanderNom         # on charge l'adresse de TexteDemanderNom dans $a0
+    li $v0 4                        # On dit que l'on souhaite afficher une chaine de caractères
+    syscall                         # On effectue l'appel système
 
-	la $a0 fichier
-	li $a1 1024
-	li $v0 8
-	syscall
+    la $a0 fichier
+    li $a1 1024
+    li $v0 8
+    syscall
 
-	move $t0 $a0
-	EnleveRetChar:
-	lb $a0 0($t0)					# on récupère le caractère courant
-	beq $a0 10 FinEnleveRetChar		# si on a '\n', alors on sort de la boucle
-	addi $t0 $t0 1					# sinon on incrémente l'offset
-	j EnleveRetChar 				# ...et on rerentre dans la boucle
+    move $t0 $a0
+    EnleveRetChar:
+    lb $a0 0($t0)                   # on récupère le caractère courant
+    beq $a0 10 FinEnleveRetChar     # si on a '\n', alors on sort de la boucle
+    addi $t0 $t0 1                  # sinon on incrémente l'offset
+    j EnleveRetChar                 # ...et on rerentre dans la boucle
 
-	FinEnleveRetChar:
-	li $t1 46 						# caractère '.' en ascii
-	li $t2 116 						# caractère 't' en ascii
-	li $t3 120 						# caractère 'x' en ascii
-	sb $t1 0($t0)					# on écrit '.' à la suite du nom du fichier
-	sb $t2 1($t0)					# on écrit 't' à la suite du nom du fichier
-	sb $t3 2($t0)					# on écrit 'x' à la suite du nom du fichier
-	sb $t2 3($t0)					# on écrit 't' à la suite du nom du fichier
-	sb $0 4($t0)					# on écrit '\0' à la suite du nom du fichier
+    FinEnleveRetChar:
+    li $t1 46                       # caractère '.' en ascii
+    li $t2 116                      # caractère 't' en ascii
+    li $t3 120                      # caractère 'x' en ascii
+    sb $t1 0($t0)                   # on écrit '.' à la suite du nom du fichier
+    sb $t2 1($t0)                   # on écrit 't' à la suite du nom du fichier
+    sb $t3 2($t0)                   # on écrit 'x' à la suite du nom du fichier
+    sb $t2 3($t0)                   # on écrit 't' à la suite du nom du fichier
+    sb $0 4($t0)                    # on écrit '\0' à la suite du nom du fichier
 
 
     la $a0 TexteMenu    # On charge l'adresse de TexteMenu dans $a0
@@ -804,77 +804,78 @@ TesteVisite:
 
 # Résolution d'un labyrinthe
 resoudreLabyrinthe:
+#VARIABLES TEMP :
+#t0 : adresse début tableau (puis case courante)
+#t1 : adresse de fin de tableau
+#t2 : N
+#v1 : adresse premier elem tableau
 
-	la $a0 fichier
-	li $v0 4
-	syscall
+    # Ouvrir le fichier
+    la $a0 fichier      # nom du fichier
+    li $a1 0            # ouverture du fichier en lecture (0 : lecture; 1 écriture, ...)
+    li $a2 0            # pas besoin de mode (ignoré)
+    li $v0 13           # appel système pour ouvrir un fichier
+    syscall
+    move $s0 $v0        # sauvegarde du descripteur du fichier
 
+    # Lecture du fichier
+    move $a0 $s0        # descripteur du fichier
+    la $a1 buffer       # adresse du buffer dans lequel on doit écrire
+    li $a2 1            # taille du buffer = 1
+    li $v0 14           # appel système pour lire un fichier
+    syscall
 
+    lb $s1 0($a1)       # premier digit
+    subiu $s1 $s1 0x30  # on le convertit en entier
+    mul $s1 $s1 10      # on le multiplie par 10, car c'est le chiffre des dizaine
 
-	# Ouvrir le fichier
-	la $a0 fichier      # nom du fichier
-	li $a1 0        # on ouvre le fichier en écriture (0 : lecture; 1 écriture, ... 9 : écriture à la fin)
-	li $a2 0        # pas besoin de mode (ignoré)
-	li $v0 13       # appel système pour ouvrir un fichier
-	syscall
-	move $s0 $v0        # sauvegarde du descripteur du fichier
+    li $v0 14           # appel système pour lire un fichier
+    syscall
 
-	# Lecture du fichier
-	move $a0 $s0        # descripteur du fichier
-	la $a1 buffer       # adresse du buffer à partir duquel on doit écrire
-	li $a2 1        	# Taille du buffer = 1
-	li $v0 14       	# appel système pour lire un fichier
-	syscall
+    lb $s2 0($a1)       # deuxième digit
+    subiu $s2 $s2 0x30  # on le converti en entier
 
-	lb $s1 0($a1) 		# premier digit
-	subiu $s1 $s1 0x30 	# on le convertit en entier
-	mul $s1 $s1 10		# on le multiplie par 10, car c'est le chiffre des dizaine
+    addu $t2 $s1 $s2    # $t2 contient la valeur de N
 
-	li $v0 14       	# appel système pour lire un fichier
-	syscall
+    mul $s3 $t2 $t2     # $s3 = N*N
+    mul $a0 $s3 4       # taille du tableau à créer en octets (N*N*4 octets)
+    li $v0 9            # on récupère l'adresse du premier élément du tableau
+    syscall             # $v0 contiendra donc l'adresse du premier élément du tableau
 
-	lb $s2 0($a1) 		# deuxième digit
-	subiu $s2 $s2 0x30 	# on le convertit en entier
-
-
-	addu $s3 $s1 $s2 	# $s3 contient la valeur de N
-
-	mul $s3 $s3 $s3		# $s3 = N*N
-	mul $a0 $s3 4   	# taille du tableau à créer en octets (N*N*4 octets)
-    li $v0 9        	# on récupère l'adresse du premier élément du tableau
-    syscall         	# $v0 contiendra donc l'adresse du premier élément du tableau
-
-    move $t0 $v0		# Adresse du premier élément du tableau
-    addu $t1 $t0 $a0	# Adresse de fin du tableau
+    move $t0 $v0        # Adresse du premier élément du tableau
+    addu $t1 $t0 $a0    # Adresse de fin du tableau
 
 
     BoucleImporterTableau:
     beq $t0 $t1 FinBoucleImporterTableau
 
-	move $a0 $s0        # descripteur du fichier
-	la $a1 buffer       # adresse du buffer à partir duquel on doit écrire
-	li $a2 1        	# Taille du buffer = 1
-    li $v0 14			# appel système pour lire un fichier
-    syscall
-
-    lb $t2 0($a1)		# caractère courant
-
-    blt $t2 48 BoucleImporterTableau
-    bgt $t2 57 BoucleImporterTableau
-
-    move $a0 $t2
-    li $v0 11
-    syscall
-
     move $a0 $s0        # descripteur du fichier
-	la $a1 buffer       # adresse du buffer à partir duquel on doit écrire
-	li $a2 1        	# Taille du buffer = 1
-    li $v0 14			# appel système pour lire un fichier
+    la $a1 buffer       # adresse du buffer à partir duquel on doit écrire
+    li $a2 1            # Taille du buffer = 1
+    li $v0 14           # appel système pour lire un fichier
     syscall
 
-    lb $t2 0($a1)		# caractère courant
-    move $a0 $t2
-    li $v0 11
+    lb $s1 0($a1)       # caractère courant
+
+    # Si le caractère courant n'est pas un chiffre on recommence
+    blt $s1 48 BoucleImporterTableau
+    bgt $s1 57 BoucleImporterTableau
+
+
+    subiu $s1 $s1 0x30  # on converti le premier digit en entier
+    mul $s1 $s1 10      # on le multiplie par 10, car c'est le chiffre des dizaine
+
+    li $v0 14           # appel système pour lire un fichier
+    syscall
+
+    lb $s2 0($a1)       # second digit
+    subiu $s1 $s1 0x30  # on le converti en entier
+
+    addu $s3 $s1 $s2    # $s3 : entier de la case
+    sw $s3 0($t0)       # on sauvegarde la valeur dans la bonne case du tableau
+
+    move $a0 $s3
+    li $v0 1
     syscall
 
     addiu $t0 $t0 4
@@ -883,11 +884,10 @@ resoudreLabyrinthe:
     FinBoucleImporterTableau:
 
 
-	# On ferme le fichier
-	move $a0 $s0        # descripteur du fichier à fermer
-	li $v0 16       	# appel système pour fermer un fichier
-	syscall
-
+    # On ferme le fichier
+    move $a0 $s0        # descripteur du fichier à fermer
+    li $v0 16           # appel système pour fermer un fichier
+    syscall
 
     j Exit
 
