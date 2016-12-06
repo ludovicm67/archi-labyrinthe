@@ -567,7 +567,7 @@ PlacerDepartEtArrivee:
     jr $ra
 
 
-# Retourne les indices des différents voisins d'une case
+# Retourne l'indice d'un des voisins
 ## Entrée : $a0 : adresse du premier élément du tableau contenant le labyrinthe
 ##          $a1 : indice X de la case courante
 ##          $a2 : valeur de N entrée au début par l'utilisateur
@@ -829,9 +829,190 @@ resoudreLabyrinthe:
     move $a0 $v0        # nombre de lignes/colonnes du labyrinthe : N
     move $a1 $v1        # adresse du premier élément du tableau
 
+    jal ResolutionLabyrinthe
+
     jal AfficheTableau  # On écrit le contenu du tableau dans le fichier de sortie
 
     j Exit
+
+# $a0 = N
+# $a1 = adresse du premier élément du tableau
+ResolutionLabyrinthe:
+
+    # prologue
+    subu $sp $sp 16
+    sw $a0 12($sp)
+    sw $a1 8($sp)
+    sw $s0 4($sp)
+    sw $ra 0($sp)
+
+    move $t0 $a0
+    move $a0 $a1 # adresse du premier élément du tableau
+    move $a1 $t0 # N
+
+    jal TrouverCaseDepart
+    move $a1 $v0 # indice de la case de départ
+    move $a2 $t0 # N
+
+    jal VoisinResolution
+    move $a0 $v0
+    li $v0 1
+    syscall
+
+    # épilogue
+    lw $a0 12($sp)
+    lw $a1 8($sp)
+    lw $s0 4($sp)
+    lw $ra 0($sp)
+    addu $sp $sp 16
+
+    jr $ra
+
+
+#Permet de savoir si il y a un mur à un endroit spécifique
+# $a0 : Adresse du premier élément du tableau
+# $a1 : Indice de la case à tester
+# $a2 : Nombre qui détermine à quel endroit tester (1: mur en haut, 2: mur à droite, 4: mur en bas, 8: mur à gauche)
+# $v0 : 1 si mur, 0 si pas de murs
+TestMur:
+    # prologue
+    subu $sp $sp 8
+    sw $s0 4($sp)
+    sw $s1 0($sp)
+
+    # corps de la fonction
+    mul $s0 $a1 4 # offset
+    add $s0 $a0 $s0 # adresse de la case à tester
+    lw $s1 0($s0) # $s1 : valeur de la case
+    and $v0 $a2 $s1
+    bnez $v0 Un
+    beqz $v0 Fin
+    Un:
+    li $v0 1
+
+    # épilogue
+    Fin:
+    lw $s0 4($sp)
+    lw $s1 0($sp)
+    addu $sp $sp 8
+
+    jr $ra
+
+
+# Retourne l'indice d'un des voisins
+## Entrée : $a0 : adresse du premier élément du tableau contenant le labyrinthe
+##          $a1 : indice X de la case courante
+##          $a2 : valeur de N entrée au début par l'utilisateur
+## Sortie : $v0 : l'indice d'un des voisins choisis aléatoirement (vaut -1 si aucun voisin)
+VoisinResolution:
+    # prologue
+    subu $sp $sp 32
+    sw $a0 28($sp)
+    sw $a1 24($sp)
+    sw $a2 20($sp)
+    sw $a3 16($sp)
+    sw $s0 12($sp)
+    sw $s1 8($sp)
+    sw $s2 4($sp)
+    sw $ra 0($sp)
+
+    # corps de la fonction
+    li $s0 0                        # Compteur du nombre de voisins initialisé à 0
+    move $t0 $a1                    # X
+    move $t1 $a2                    # N
+    div $t2 $t0 $t1
+    mfhi $t2                        # X%N
+
+    # Valeurs pour les tests
+    subi $t3 $t1 1                  # $t3=N-1
+    mul $t4 $t1 $t3                 # $t4=N*(N-1)
+
+    # On cherche les différents voisins disponibles
+    beq $t2 0 FinVoisinRGauche       # Si X%N = 0 alors pas de voisin à gauche
+    subi $a1 $t0 1                  # sinon l'indice vaut X-1
+    jal TesteVisite                 # on vérifie si la case a déjà été visitée
+    beq $v0 1 FinVoisinRGauche       # si c'est le cas, ce voisin n'est plus disponible
+
+    li $a2 2
+    jal TestMur
+    bnez $v0 FinVoisinRDroite
+
+    addi $s0 $s0 4                  # on incremente le compteur de 8
+    subu $sp $sp 4                  # on fait de la place sur la pile pour stocker l'indice de ce voisin
+    sw $a1 0($sp)                   # on sauvegarde l'indice du voisin trouvé sur la pile
+    FinVoisinRGauche:
+
+    beq $t3 $t2 FinVoisinRDroite     # Si X%N = N-1 alors pas de voisin à droite
+    addi $a1 $t0 1                  # sinon l'indice vaut X+1
+    jal TesteVisite                 # on vérifie si la case a déjà été visitée
+    beq $v0 1 FinVoisinRDroite       # si c'est le cas, ce voisin n'est plus disponible
+
+    li $a2 8
+    jal TestMur
+    bnez $v0 FinVoisinRDroite
+
+    addi $s0 $s0 4                  # on incremente le compteur de 8
+    subu $sp $sp 4                  # on fait de la place sur la pile pour stocker l'indice de ce voisin
+    sw $a1 0($sp)                   # on sauvegarde l'indice du voisin trouvé sur la pile
+    FinVoisinRDroite:
+
+    blt $t0 $t1 FinVoisinRHaut       # Si X<N alors il n'y a pas de voisin en haut
+    sub $a1 $t0 $t1                 # sinon l'indice vaut X-N
+    jal TesteVisite                 # on vérifie si la case a déjà été visitée
+    beq $v0 1 FinVoisinRHaut         # si c'est le cas, ce voisin n'est plus disponible
+
+    li $a2 4
+    jal TestMur
+    bnez $v0 FinVoisinRDroite
+
+    addi $s0 $s0 4                  # on incremente le compteur de 8
+    subu $sp $sp 4                  # on fait de la place sur la pile pour stocker l'indice de ce voisin
+    sw $a1 0($sp)                   # on sauvegarde l'indice du voisin trouvé sur la pile
+    FinVoisinRHaut:
+
+    bge $t0 $t4 FinVoisinRBas        # Si X >= N*(N-1) alors il n'y a pas de voisin en bas
+    add $a1 $t0 $t1                 # Sinon l'infice vaut X+N
+    jal TesteVisite                 # on vérifie si la case a déjà été visitée
+    beq $v0 1 FinVoisinRBas          # si c'est le cas, ce voisin n'est plus disponible
+
+    li $a2 1
+    jal TestMur
+    bnez $v0 FinVoisinRDroite
+
+    addi $s0 $s0 4                  # on incremente le compteur de 8
+    subu $sp $sp 4                  # on fait de la place sur la pile pour stocker l'indice de ce voisin
+    sw $a1 0($sp)                   # on sauvegarde l'indice du voisin trouvé sur la pile
+    FinVoisinRBas:
+
+    li $v0 -1                       # valeur de retour par défaut
+
+    div $s1 $s0 4                   # on récupère le nombre de voisins ajoutés sur la pile
+    beq $s1 $0 FinVoisinR            # si aucun voisin n'a été trouvé, on a pas besoin de faire ce qui suit
+
+    li $a0 0
+    move $a1 $s1                    # borne sup = $s1
+    li $v0 42                       # genere un nombre aléatoire dans $a0, 0 <= $a0 < borne sup ($a1)
+    syscall
+    move $s2 $a0
+    mul $s2 $s2 4                   # on calcul l'offset pour récupérer le bon voisin
+    addu $s2 $sp $s2                # on récupère la bonne adresse sur la pile
+    lw $v0 0($s2)                   # $v0 contient désormais l'indice d'un voisin choisi aléatoirement
+
+    addu $sp $sp $s0                # on libère la place sur la pile
+
+    # épilogue
+    FinVoisinR:
+    lw $a0 28($sp)
+    lw $a1 24($sp)
+    lw $a2 20($sp)
+    lw $a3 16($sp)
+    lw $s0 12($sp)
+    lw $s1 8($sp)
+    lw $s2 4($sp)
+    lw $ra 0($sp)
+    addu $sp $sp 32
+
+    jr $ra
 
 
 # Créer un tableau avec les données provenant d'un fichier
@@ -932,6 +1113,51 @@ ImporterTableauDepuisFichier:
     lw $s2 4($sp)
     lw $s3 0($sp)
     addu $sp $sp 28
+
+    jr $ra
+
+
+# Fonction qui permet de trouver la case de départ
+## Entrées : $a0 = adresse du premier élément du tableau
+##           $a1 = N
+## Sortie:   $v0 = adresse de la case de départ
+TrouverCaseDepart:
+    # prologue
+    subu $sp $sp 12
+    sw $a0 8($sp)
+    sw $a1 4($sp)
+    sw $ra 0($sp)
+
+    #corps de la fonction
+    move $s2 $a0 # $s2 : adresse du premier élement du tableau
+
+    li $t0 16 # masque pour trouver le bit de départ
+    lw $s0 0($a0) # On stocke la valeur de la case dans $s0
+
+    mul $s1 $a1 $a1
+    mul $s1 $s1 4
+    add $s1 $a0 $s1 # $s1 : l'adresse de la case de fin
+
+    CaseSuivante:
+    and $v0 $s0 $t0 # On test si il y a un bit en B4
+    addi $a0 $a0 4
+    bnez $v0 FinCaseDepart # Sinon on a trouvé la case de départ
+    beq $a0 $s1 FinCaseDepart
+    lw $s0 0($a0) # on charge la nouvelle valeur
+    beqz $v0 CaseSuivante # Si le test est vrai on passe à la case suivante
+    j CaseSuivante
+    FinCaseDepart:
+
+    subu $a0 $a0 $s2    # adresse finale - adresse initiale
+    div $a0 $a0 4       # on récupère l'indice (chaque case = 4 octets)
+    subi $a0 $a0 1      # on enlève 1, car on a commencé à traiter la première case avant
+    move $v0 $a0        # on met le bon indice sur la valeur de sortie, $v0
+
+    #epilogue
+    lw $a0 8($sp)
+    lw $a1 4($sp)
+    lw $ra 0($sp)
+    addu $sp $sp 12
 
     jr $ra
 
