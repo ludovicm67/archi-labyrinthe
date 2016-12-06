@@ -851,13 +851,11 @@ ResolutionLabyrinthe:
     move $a1 $t0 # N
 
     jal TrouverCaseDepart
+    move $a2 $a1 # N
     move $a1 $v0 # indice de la case de départ
-    move $a2 $t0 # N
 
     jal VoisinResolution
     move $a0 $v0
-    li $v0 1
-    syscall
 
     # épilogue
     lw $a0 12($sp)
@@ -927,6 +925,8 @@ VoisinResolution:
     subi $t3 $t1 1                  # $t3=N-1
     mul $t4 $t1 $t3                 # $t4=N*(N-1)
 
+
+
     # On cherche les différents voisins disponibles
     beq $t2 0 FinVoisinRGauche       # Si X%N = 0 alors pas de voisin à gauche
     subi $a1 $t0 1                  # sinon l'indice vaut X-1
@@ -935,12 +935,15 @@ VoisinResolution:
 
     li $a2 2
     jal TestMur
-    bnez $v0 FinVoisinRDroite
+    bnez $v0 FinVoisinRGauche
 
-    addi $s0 $s0 4                  # on incremente le compteur de 8
+    addi $s0 $s0 4                  # on incremente le compteur de 4
     subu $sp $sp 4                  # on fait de la place sur la pile pour stocker l'indice de ce voisin
     sw $a1 0($sp)                   # on sauvegarde l'indice du voisin trouvé sur la pile
     FinVoisinRGauche:
+
+
+
 
     beq $t3 $t2 FinVoisinRDroite     # Si X%N = N-1 alors pas de voisin à droite
     addi $a1 $t0 1                  # sinon l'indice vaut X+1
@@ -951,10 +954,14 @@ VoisinResolution:
     jal TestMur
     bnez $v0 FinVoisinRDroite
 
-    addi $s0 $s0 4                  # on incremente le compteur de 8
+    addi $s0 $s0 4                  # on incremente le compteur de 4
     subu $sp $sp 4                  # on fait de la place sur la pile pour stocker l'indice de ce voisin
     sw $a1 0($sp)                   # on sauvegarde l'indice du voisin trouvé sur la pile
     FinVoisinRDroite:
+
+
+
+
 
     blt $t0 $t1 FinVoisinRHaut       # Si X<N alors il n'y a pas de voisin en haut
     sub $a1 $t0 $t1                 # sinon l'indice vaut X-N
@@ -963,12 +970,15 @@ VoisinResolution:
 
     li $a2 4
     jal TestMur
-    bnez $v0 FinVoisinRDroite
+    bnez $v0 FinVoisinRHaut
 
     addi $s0 $s0 4                  # on incremente le compteur de 8
     subu $sp $sp 4                  # on fait de la place sur la pile pour stocker l'indice de ce voisin
     sw $a1 0($sp)                   # on sauvegarde l'indice du voisin trouvé sur la pile
     FinVoisinRHaut:
+
+
+
 
     bge $t0 $t4 FinVoisinRBas        # Si X >= N*(N-1) alors il n'y a pas de voisin en bas
     add $a1 $t0 $t1                 # Sinon l'infice vaut X+N
@@ -977,16 +987,20 @@ VoisinResolution:
 
     li $a2 1
     jal TestMur
-    bnez $v0 FinVoisinRDroite
+    bnez $v0 FinVoisinRBas
 
-    addi $s0 $s0 4                  # on incremente le compteur de 8
+    addi $s0 $s0 4                  # on incremente le compteur de 4
     subu $sp $sp 4                  # on fait de la place sur la pile pour stocker l'indice de ce voisin
     sw $a1 0($sp)                   # on sauvegarde l'indice du voisin trouvé sur la pile
     FinVoisinRBas:
 
+
+
+
     li $v0 -1                       # valeur de retour par défaut
 
     div $s1 $s0 4                   # on récupère le nombre de voisins ajoutés sur la pile
+
     beq $s1 $0 FinVoisinR            # si aucun voisin n'a été trouvé, on a pas besoin de faire ce qui suit
 
     li $a0 0
