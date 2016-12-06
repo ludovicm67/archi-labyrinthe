@@ -841,7 +841,6 @@ resoudreLabyrinthe:
 # $a0 = N
 # $a1 = adresse du premier élément du tableau
 ResolutionLabyrinthe:
-
     # prologue
     subu $sp $sp 16
     sw $a0 12($sp)
@@ -861,13 +860,8 @@ ResolutionLabyrinthe:
     move $a1 $v0 # indice de la case de départ
     jal MarqueVisite # Marque la case courante comme visitée
 
-    subu $sp $sp 4
-    sw $a1 0($sp)
-    li $s2 4 #compteur (initialisé à 4,car on met direct la case de départ)
+    li $s2 0 #compteur
 
-
-    #####
-    # $a1 = case courante
     DeplaceLaby:
     jal VoisinResolution
     move $a1 $v0
@@ -900,16 +894,11 @@ move $a0 $t6
     lw $a1 0($sp) # sinon on charge la valeur de la case précédente
     j DeplaceLaby
 
-    # épilogue
     FinDeplaceLaby:
     addu $sp $sp $s2
 
-    addu $sp $sp 4          # case de départ
     mul $a1 $a2 $a2         # $a1 = taille tu tableau (N*N)
     jal EnleverViste
-
-
-    #####
 
     # épilogue
     lw $a0 12($sp)
@@ -920,75 +909,8 @@ move $a0 $t6
 
     jr $ra
 
-# # Résolution d'un labyrinthe
-# resoudreLabyrinthe:
 
-#     DeplaceLaby:
-#     # prologue (ra s0 s1 a0 a1)
-#     subu $sp $sp 20
-#     sw $a0 16($sp) #$a0 = N
-#     sw $a1 12($sp) #$a1 = l'adresse de la première case du tableau
-#     sw $s0 8($sp)
-#     sw $s1 4($sp)
-#     sw $ra 0($sp)
-
-#     # corps de la fonction
-#     move $s0 $a0 #On sauvegarde N dans $s0
-#     move $s1 $a1 #On sauvegarde l'adresse de la première case du tableau dans $s1
-#     move $a2 $a0 # $a2 = N
-
-#     jal TrouverCaseDepart # $v0 contient l'indice de la case départ
-
-#     move $a0 $v0
-#     li $v0 1
-#     syscall
-#     j Exit
-
-#     move $a0 $s1 # $a0 = adresse du premier élément du tableau
-#     move $a1 $v0 # $a1 = case courante (initialisée à la case de départ)
-#     jal MarqueVisite # Marque la case courante comme visitée
-
-#     subu $sp $sp 4
-#     sw $a1 0($sp)
-#     li $s2 4 #compteur
-
-#     BoucleResolutionLabyrinthe:
-#     jal VoisinResolution
-#     beq $v0 -1 MarcheArriereR
-#     move $a2 $v0
-#     move $a1 $a2            # indice d'un des voisins
-#     jal MarqueVisite        # Marque la case courante comme visitée
-#     move $a2 $s0
-#     subu $sp $sp 4
-#     sw $a1 0($sp)
-#     addi $s2 $s2 4
-
-#     j BoucleResolutionLabyrinthe
-
-#     MarcheArriereR:
-#     addu $sp $sp 4          # case bloquée
-#     subi $s2 $s2 4
-#     ble $s2 4 FinBoucleResolutionLabyrinthe
-#     lw $a1 0($sp)
-#     j BoucleResolutionLabyrinthe
-
-#     # épilogue
-#     FinBoucleResolutionLabyrinthe:
-#     addu $sp $sp 4          # case de départ
-#     mul $a1 $a2 $a2         # $a1 = taille tu tableau (N*N)
-#     jal EnleverViste
-
-#     lw $a0 16($sp)
-#     lw $a1 12($sp)
-#     lw $s0 8($sp)
-#     lw $s1 4($sp)
-#     lw $ra 0($sp)
-#     addu $sp $sp 20
-
-#     jr $ra
-
-
-#Permet de savoir si il y a un mur à un endroit spécifique
+# Permet de savoir si il y a un mur à un endroit spécifique
 # $a0 : Adresse du premier élément du tableau
 # $a1 : Indice de la case à tester
 # $a2 : Nombre qui détermine à quel endroit tester (1: mur en haut, 2: mur à droite, 4: mur en bas, 8: mur à gauche)
@@ -1004,13 +926,11 @@ TestMur:
     add $s0 $a0 $s0 # adresse de la case à tester
     lw $s1 0($s0) # $s1 : valeur de la case
     and $v0 $a2 $s1
-    bnez $v0 Un
-    beqz $v0 Fin
-    Un:
+    beqz $v0 FinTestMur
     li $v0 1
 
     # épilogue
-    Fin:
+    FinTestMur:
     lw $s0 4($sp)
     lw $s1 0($sp)
     addu $sp $sp 8
