@@ -833,7 +833,6 @@ resoudreLabyrinthe:
     move $a1 $v1        # adresse du premier élément du tableau
 
     jal ResolutionLabyrinthe
-
     jal AfficheTableau  # On écrit le contenu du tableau dans le fichier de sortie
 
     j Exit
@@ -895,8 +894,6 @@ ResolutionLabyrinthe:
     subi $s2 $s2 4
     addu $sp $sp 4
     j FinDeplaceLaby
-
-
 
     FinResolutionLabyrinthe:
     mul $a1 $a2 $a2                 # $a1 = taille tu tableau (N*N)
