@@ -798,7 +798,215 @@ TesteVisite:
 # Résolution d'un labyrinthe
 resoudreLabyrinthe:
     
+    DeplaceLaby:
+    # prologue (ra s0 s1 a0 a1)
+    subu $sp $sp 20
+    sw $a0 16($sp) #$a0 = N
+    sw $a1 12($sp) #$a1 = l'adresse de la première case du tableau
+    sw $s0 8($sp)
+    sw $s1 4($sp)
+    sw $ra 0($sp)
+
+    # corps de la fonction
+    move $s0 $a0 #On sauvegarde N dans $s0
+    move $s1 $a1 #On sauvegarde l'adresse de la première case du tableau dans $s1
+    move $a2 $a0 # $a2 = N
+
+    jal TrouverCaseDepart # $v0 contient l'indice de la case départ
+
+    move $a0 $s1 # $a0 = adresse du premier élément du tableau
+    move $a1 $v0 # $a1 = case courante (initialisée à la case de départ)
+    jal MarqueVisite # Marque la case courante comme visitée
+    jal Pile
+
+    BoucleParcours:
+    jal VoisinResolution
+    beq $v0 -1 FinBoucleParcours
+    move $a1 $v0 # indice d'un des voisins
+    jal MarqueVisite # Marque la case courante comme visitée
+    lw $a2 16($sp) # on récupère la valeur de N (stockée dans la pile, originalement dans $a0)
+    j BoucleConstruireLabyrinthe
+
+    # epilogue
+    FinBoucleConstruireLabyrinthe:
+    mul $a1 $a2 $a2 # $a1 = taille tu tableau (N*N)
+    jal EnleverViste
+
+    lw $a0 16($sp)
+    lw $a1 12($sp)
+    lw $s0 8($sp)
+    lw $s1 4($sp)
+    lw $ra 0($sp)
+    addu $sp $sp 20
+
+    jr $ra
+    
+#Permet de savoir si il y a un mur à un endroit spécifique
+# $a0 : Adresse du premier élément du tableau
+# $a1 : Nombre qui détermine à quel endroit tester (1: mur en haut, 2: mur à droite, 4: mur en bas, 8: mur à gauche)
+# $a2 : Indice de la case à tester
+# $v0 : 1 si mur, 0 si pas de murs
+
+TestMur:
+	#prologue
+	subu $sp $sp 16
+	sw $a0 12($sp)
+	sw $a1 8($sp)
+	sw $a2 4($sp)
+	sw $ra 0($sp)
+	
+	#corps de la fonction
+	
+	mul $s0 $a2 4 #offset
+	add $s0 $a0 $s0 #adresse de la case à tester
+	lw $s1 0($s0) #$s1 : valeur de la case
+	and $v0 $a1 $s1
+	bnez $v0 Un
+	beqz $v0 Fin
+	Un:
+	li $v0 1
+	
+	
+	Fin:
+	#epilogue
+	lw $a0 12($sp)
+	lw $a1 8($sp)
+	lw $a2 4($sp)
+	lw $ra 0($sp)
+	addu $sp $sp 16
+	
+	jr $ra
+
+# Retourne les indices des différents voisins d'une case
+## Entrée : $a0 : adresse du premier élément du tableau contenant le labyrinthe
+##          $a1 : indice X de la case courante
+##          $a2 : valeur de N entrée au début par l'utilisateur
+## Sortie : $v0 : l'indice d'un des voisins choisis aléatoirement (vaut -1 si aucun voisin)
+
+VoisinResolution:
+    # prologue
+    subu $sp $sp 28
+    sw $a0 24($sp)
+    sw $a1 20($sp)
+    sw $a2 16($sp)
+    sw $a3 12($sp)
+    sw $s0 8($sp)
+    sw $s1 4($sp)
+    sw $ra 0($sp)
+
+    # corps de la fonction
+    li $s0 0            # Compteur du nombre de voisins, qu'on initialise à 0
+    move $t0 $a1        # X
+    move $t1 $a2        # N
+    div $t2 $t0 $t1
+    mfhi $t2            # X%N
+
+    # Valeurs pour les tests
+    subi $t3 $t1 1      # $t3=N-1
+    mul $t4 $t1 $t3     # $t4=N*(N-1)
+
+    # On cherche les différents voisins disponibles
+    beq $t2 0 FinVoisinGauche       # Si X%N = 0 alors pas de voisin à gauche
+    subi $a1 $t0 1                  # sinon l'indice vaut X-1
+    jal TesteVisite                 # on vérifie si la case a déjà été visitée
+    beq $v0 1 FinVoisinGauche       # si c'est le cas, ce voisin n'est plus disponible
+    addi $s0 $s0 4                  # on incremente le compteur de 4
+    subu $sp $sp 4                  # on fait de la place sur la pile pour stocker l'indice de ce voisin
+    move $t6 $a1		    # On sauvegarde la valeur de $a1 dans $t6
+    move $a2 $t0	            # On place l'indice de la case à tester dans $a2
+    li $a1 8                        #$a1 : mur à gauche    
+    jal TestMur                     #On test si il y a un mur à gauche
+    beqz $v0 Voisin                 # si $v0 vaut 0 cela veut dire qu'il n'y en a pas donc on peut aller à gauche
+    bnez $v0 FinVoisinGauche        #sinon on ne peut pas
+    Voisin:
+    sw $a1 0($sp)                   # on sauvegarde l'indice du voisin trouvé sur la pile
+    FinVoisinGauche:
+    
+    move $a1 $t6                    # On récupère la valeur de $a1
+    beq $t3 $t2 FinVoisinDroite     # Si X%N = N-1 alors pas de voisin à droite
+    addi $a1 $t0 1                  # sinon l'indice vaut X+1
+    jal TesteVisite                 # on vérifie si la case a déjà été visitée
+    beq $v0 1 FinVoisinDroite       # si c'est le cas, ce voisin n'est plus disponible
+    addi $s0 $s0 4                  # on incremente le compteur de 4
+    subu $sp $sp 4                  # on fait de la place sur la pile pour stocker l'indice de ce voisin
+    move $t6 $a1	            # On sauvegarde la valeur de $a1 dans $t6
+    move $a2 $t0	            # On place l'indice de la case à tester dans $a2
+    li $a1 2                        # $a1 : mur à droite
+    jal TestMur                     # On test si il y a un mur à droite
+    beqz $v0 Voisin1                 # si $v0 vaut 0 cela veut dire qu'il n'y en a pas donc on peut aller à droite
+    bnez $v0 FinVoisinDroite        # sinon on ne peut pas
+    Voisin1:
+    sw $a1 0($sp)                   # on sauvegarde l'indice du voisin trouvé sur la pile
+    FinVoisinDroite:
+
+    move $a1 $t6		    # On récupère la valeur de $a1
+    blt $t0 $t1 FinVoisinHaut       # Si X<N alors il n'y a pas de voisin en haut
+    sub $a1 $t0 $t1                 # sinon l'indice vaut X-N
+    jal TesteVisite                 # on vérifie si la case a déjà été visitée
+    beq $v0 1 FinVoisinHaut         # si c'est le cas, ce voisin n'est plus disponible
+    addi $s0 $s0 4                  # on incremente le compteur de 4
+    subu $sp $sp 4                  # on fait de la place sur la pile pour stocker l'indice de ce voisin
+    move $t6 $a1                    # On sauvegarde la valeur $a1 dans $t6
+    move $a2 $t0	            # On place l'indice de la case à tester dans $a2
+    li $a1 1                        # $a1: mur en haut
+    jal TestMur			    # On test si il y a un mur en haut
+    beqz $v0 Voisin2		    # si $v0 vaut 0 cela veut dire qu'il n'y en a pas donc on peut aller en haut
+    bnez $v0 FinVoisinHaut          # sinon on ne peut pas
+    Voisin2:
+    sw $a1 0($sp)                   # on sauvegarde l'indice du voisin trouvé sur la pile
+    FinVoisinHaut:
+
+    move $a1 $t6                    # On récupère la valeur de $a1
+    bge $t0 $t4 FinVoisinBas        # Si X >= N*(N-1) alors il n'y a pas de voisin en bas
+    add $a1 $t0 $t1                 # Sinon l'infice vaut X+N
+    jal TesteVisite                 # on vérifie si la case a déjà été visitée
+    beq $v0 1 FinVoisinBas          # si c'est le cas, ce voisin n'est plus disponible
+    addi $s0 $s0 4                  # on incremente le compteur de 4
+    subu $sp $sp 4                  # on fait de la place sur la pile pour stocker l'indice de ce voisin
+    move $t6 $a1                    # On sauvegarde la valeur de $a1 dans $t6
+    move $a2 $t0	            # On place l'indice de la case à tester dans $a2
+    li $a1 4                        # $a1: mur en bas
+    jal TestMur                     # On test si il y a un mur en bas
+    beqz $v0 Voisin3                # Si $v0 vaut 0 cela veut dire qu'il n'y en a pas donc on peut aller en bas
+    bnez $v0 FinVoisinBas           # Sinon on ne peut pas
+    Voisin3:
+    sw $a1 0($sp)                   # on sauvegarde l'indice du voisin trouvé sur la pile
+    FinVoisinBas:
+
+    move $a1 $t6 		    # On récupère la valeur de $a1
+    li $v0 -1                       # valeur de retour par défaut
+    li $v1 -1                       # valeur de retour par défaut
+
+    div $s1 $s0 8                   # on récupère le nombre de voisins ajoutés sur la pile
+    beq $s1 $0 FinVoisin            # si aucun voisin n'a été trouvé, on a pas besoin de faire ce qui suit
+
+    li $a0 0
+    move $a1 $s1                    # borne sup = $s1
+    li $v0 42                       # genere un nombre aléatoire dans $a0, 0 <= $a0 < borne sup ($a1)
+    syscall
+    move $s2 $a0
+    mul $s2 $s2 8                   # on calcul l'offset pour récupérer le bon voisin
+    addu $s2 $sp $s2                # on récupère la bonne adresse sur la pile
+    lw $v1 4($s2)                   # $v1 contient désormais la direction (0 : haut, 1 : droite, 2 : bas, 3 : gauche)
+    lw $v0 0($s2)                   # $v0 contient désormais l'indice d'un voisin choisi aléatoirement
+
+    addu $sp $sp $s0                # on libère la place sur la pile
+
+    # epilogue
+    FinVoisin:
+    lw $a0 24($sp)
+    lw $a1 20($sp)
+    lw $a2 16($sp)
+    lw $a3 12($sp)
+    lw $s0 8($sp)
+    lw $s1 4($sp)
+    lw $ra 0($sp)
+    addu $sp $sp 28
+
+    jr $ra
+
     j Exit
+    
 
 
 # Fin du programme
