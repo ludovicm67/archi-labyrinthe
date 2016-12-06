@@ -876,6 +876,45 @@ TestMur:
 	addu $sp $sp 16
 	
 	jr $ra
+	
+# Fonction qui permet de trouver la case de départ
+# Entrées : # $a0 : adresse du premier élément du tableau
+	    # $a1 : N
+# Sortie: # $v0: adresse de la case de départ
+	
+TrouverCaseDepart:
+
+	#prologue
+	subu $sp $sp 12
+	sw $a0 8($sp)
+	sw $a1 4($sp)
+	sw $ra 0($sp)
+	
+	#corps de la fonction
+	
+	li $t0 16 
+	lw $s0 0($a0) # On stocke la valeur de la case dans $s0
+	CaseSuivante:
+	and $v0 $s0 $t0 # On test si il y a un bit en B4
+	beqz $v0 CaseSuivante # Si le test est vrai on passe à la case suivante
+	bnez $v0 FinCaseDepart # Sinon on a trouvé la case de départ
+	addi $a0 $a0 4
+	lw $s0 0($a0)
+	mul $s1 $a1 $a1
+	mul $s1 $s1 4
+	addi $s1 $a0 $s1
+	beq $a0 $s1 FinCaseDepart
+	j CaseSuivante
+	FinCaseDepart:
+	move $v0 $s0
+	
+	#epilogue
+	lw $a0 8($sp)
+	lw $a1 4($sp)
+	lw $ra 0($sp)
+	addu $sp $sp 12
+	
+	jr $ra
 
 # Retourne les indices des différents voisins d'une case
 ## Entrée : $a0 : adresse du premier élément du tableau contenant le labyrinthe
