@@ -547,12 +547,12 @@ PlacerDepartEtArrivee:
     ConfigOK:
     move $a0 $t1 # adresse
     move $a1 $t5 # indice
-    li $a2 31 # nouvelle valeur (15 (tous les murs) + 16 (casé départ))
+    li $a2 31 # nouvelle valeur (15 (tous les murs) + 16 (case départ))
     jal ModifieTableau
 
     move $a0 $t1 # adresse
     move $a1 $t6 # indice
-    li $a2 47 # nouvelle valeur (15 (tous les murs) + 32 (casé fin))
+    li $a2 47 # nouvelle valeur (15 (tous les murs) + 32 (case fin))
     jal ModifieTableau
 
     # épilogue
@@ -834,17 +834,20 @@ resoudreLabyrinthe:
     j Exit
 
 
-# @TODO : Ecrire le prologue et l'épilogue de ImporterTableauDepuisFichier
-
-#VARIABLES TEMP :
-#t0 : adresse début tableau (puis case courante)
-#t1 : adresse de fin de tableau
-#t2 : N
-
 # Créer un tableau avec les données provenant d'un fichier
 ## Sorties : $v0 = le nombre N de ligne/colonnes du labyrinthe importé
 ##           $v1 = adresse du premier élément du tableau
 ImporterTableauDepuisFichier:
+    # prologue
+    subu $sp $sp 28
+    sw $a0 24($sp)
+    sw $a1 20($sp)
+    sw $a2 16($sp)
+    sw $s0 12($sp)
+    sw $s1 8($sp)
+    sw $s2 4($sp)
+    sw $s3 0($sp)
+
     # Ouvrir le fichier
     la $a0 fichier      # nom du fichier
     li $a1 0            # ouverture du fichier en lecture (0 : lecture; 1 écriture, ...)
@@ -919,6 +922,16 @@ ImporterTableauDepuisFichier:
     syscall
 
     move $v0 $t2        # $v0 = N
+
+    # épilogue
+    lw $a0 24($sp)
+    lw $a1 20($sp)
+    lw $a2 16($sp)
+    lw $s0 12($sp)
+    lw $s1 8($sp)
+    lw $s2 4($sp)
+    lw $s3 0($sp)
+    addu $sp $sp 28
 
     jr $ra
 
