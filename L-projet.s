@@ -134,7 +134,6 @@ genereLabyrinthe:
     move $a0 $s0            # On met $a0 à la valeur entrée par l'utilisateur, qui a été stockée dans $s0
     move $a1 $v0            # on fait en sorte que $a1 contienne l'adresse du premier élément du tableau
 
-    jal VideFichier         # On vide d'abord le fichier
     jal ConstruireLabyrinthe
     jal AfficheTableau
 
@@ -314,7 +313,19 @@ AfficheTableau:
     sw $a2 4($sp)
     sw $ra 0($sp)
 
-    # corps de la fonction
+    # Ouvrir le fichier
+    la $a0 fichier          # nom du fichier
+    li $a1 1                # on ouvre le fichier en écriture (0 : lecture; 1 écriture, ... 9 : écriture à la fin)
+    li $a2 0                # pas besoin de mode (ignoré)
+    li $v0 13               # appel système pour ouvrir un fichier
+    syscall
+
+    move $a3 $v0            # sauvegarde du descripteur du fichier
+
+    lw $a0 12($sp)
+    lw $a1 8($sp)
+    lw $a2 4($sp)
+
     move $s0 $a0        # $s0 : nombre de cases par ligne/colonne
     mul $t0 $a0 $a0     # $t0 : nombre total de cases
     mul $t0 $t0 4       # $t0 : taille du tableau en octets
@@ -363,6 +374,12 @@ AfficheTableau:
 
     # prologue
     FinBoucleAfficheTableau:
+
+    # On ferme le fichier
+    move $a0 $a3            # descripteur du fichier à fermer
+    li $v0 16               # appel système pour fermer un fichier
+    syscall
+
     lw $s0 20($sp)
     lw $s1 16($sp)
     lw $a0 12($sp)
@@ -400,6 +417,7 @@ GetDigits:
 ## Entrée : $a0 = nombre d'arguments (soit 1, soit 2)
 ##          $a1 = premier caractère
 ##          $a2 = deuxième caractère (si a0 = 2)
+##          $a3 = descripteur de fichier
 EcrireDansFichier:
     # prologue
     subu $sp $sp 24
@@ -410,17 +428,9 @@ EcrireDansFichier:
     sw $s1 4($sp)
     sw $ra 0($sp)
 
-    # Ouvrir le fichier
-    la $a0 fichier          # nom du fichier
-    li $a1 9                # on ouvre le fichier en écriture (0 : lecture; 1 écriture, ... 9 : écriture à la fin)
-    li $a2 0                # pas besoin de mode (ignoré)
-    li $v0 13               # appel système pour ouvrir un fichier
-    syscall
-    move $s0 $v0            # sauvegarde du descripteur du fichier
-
     # Ecrire dans le fichier
     ## écriture du premier caractère
-    move $a0 $s0            # descripteur du fichier
+    move $a0 $a3            # descripteur du fichier
     la $a1 buffer           # adresse du buffer à partir duquel on doit écrire
     lw $s1 16($sp)          # premier caractère à écrire
     sb $s1 ($a1)            # on place notre caractère dans le buffer
@@ -429,19 +439,14 @@ EcrireDansFichier:
     syscall
 
     lw $s1 20($sp)          # On met $s1 à la valeur originale de $a0
-    bne $s1 2 FermerFichier # Si on ne souhaitais pas afficher 2 caractères, on ferme directement le fichier
+    bne $s1 2 FinEcrireDansFichier  # Si on ne souhaitais pas afficher 2 caractères, on ferme directement le fichier
     lw $s1 12($sp)          # deuxième caractère à écrire
     sb $s1 ($a1)            # on place notre caractère dans le buffer
     li $v0 15               # appel système pour écrire dans un fichier
     syscall
 
-    # On ferme le fichier
-    FermerFichier:
-    move $a0 $s0            # descripteur du fichier à fermer
-    li $v0 16               # appel système pour fermer un fichier
-    syscall
-
     # épilogue
+    FinEcrireDansFichier:
     lw $a0 20($sp)
     lw $a1 16($sp)
     lw $a2 12($sp)
@@ -449,37 +454,6 @@ EcrireDansFichier:
     lw $s1 4($sp)
     lw $ra 0($sp)
     addu $sp $sp 24
-
-    jr $ra
-
-
-# Vide le fichier
-VideFichier:
-    # prologue
-    subu $sp $sp 16
-    sw $a0 12($sp)
-    sw $a1 8($sp)
-    sw $a2 4($sp)
-    sw $ra 0($sp)
-
-    # Ouvrir le fichier
-    la $a0 fichier  # nom du fichier
-    li $a1 1        # on ouvre le fichier en écriture (0 : lecture; 1 écriture, ... 9 : écriture à la fin)
-    li $a2 0        # pas besoin de mode (ignoré)
-    li $v0 13       # appel système pour ouvrir un fichier
-    syscall
-
-    # On ferme directement le fichier, ce qui aura pour effet de le vider
-    move $a0 $v0    # descripteur du fichier à fermer
-    li $v0 16       # appel système pour fermer un fichier
-    syscall
-
-    # épilogue
-    lw $a0 12($sp)
-    lw $a1 8($sp)
-    lw $a2 4($sp)
-    lw $ra 0($sp)
-    addu $sp $sp 16
 
     jr $ra
 
@@ -854,8 +828,6 @@ resoudreLabyrinthe:
     # On récupère les sorties de ImporterTableauDepuisFichier appelé précédemment
     move $a0 $v0        # nombre de lignes/colonnes du labyrinthe : N
     move $a1 $v1        # adresse du premier élément du tableau
-
-    jal VideFichier     # On vide le fichier de sortie
 
     jal AfficheTableau  # On écrit le contenu du tableau dans le fichier de sortie
 
