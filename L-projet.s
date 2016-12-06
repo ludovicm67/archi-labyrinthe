@@ -838,8 +838,10 @@ resoudreLabyrinthe:
 
     j Exit
 
-# $a0 = N
-# $a1 = adresse du premier élément du tableau
+
+# Fonction qui résoud le labyrinthe
+# Entrées : $a0 = N
+#           $a1 = adresse du premier élément du tableau
 ResolutionLabyrinthe:
     # prologue
     subu $sp $sp 16
@@ -865,39 +867,39 @@ ResolutionLabyrinthe:
     DeplaceLaby:
     jal VoisinResolution
     move $a1 $v0
-    jal MarqueVisite # Marque la case courante comme visitée
-
-move $t6 $a0
-move $a0 $a1
-li $v0 1
-syscall
-la $a0 RetChar
-li $v0 4
-syscall
-move $a0 $t6
-
-    beq $a1 -1 MarcheArriereR
-    beq $a1 $s4 FinDeplaceLaby
-
+    jal MarqueVisite                # Marque la case courante comme visitée
+    beq $a1 -1 MarcheArriereR       # Si on est coincé, on dépile
+    beq $a1 $s4 FinDeplaceLaby      # Si on tombe sur la case de fin, alors on sort de la boucle
     subu $sp $sp 4
     sw $a1 0($sp)
-    addi $s2 $s2 4 #on incrémente le compteur
-
+    addi $s2 $s2 4                  # on incrémente le compteur de 4
     j DeplaceLaby
-
-
 
     MarcheArriereR:
-    addu $sp $sp 4          # case bloquée
+    addu $sp $sp 4                  # case bloquée, on dépile
     subi $s2 $s2 4
-    beq $a1 $s4 FinDeplaceLaby
-    lw $a1 0($sp) # sinon on charge la valeur de la case précédente
-    j DeplaceLaby
+    beq $a1 $s4 FinDeplaceLaby      # Si on est à la fin, alors on sort de la boucle
+    lw $a1 0($sp)                   # sinon on charge la valeur de la case précédente
+    j DeplaceLaby                   # ...et on retourne dans la boucle
 
     FinDeplaceLaby:
-    addu $sp $sp $s2
+    beqz $s2 FinResolutionLabyrinthe
 
-    mul $a1 $a2 $a2         # $a1 = taille tu tableau (N*N)
+    lw $t6 0($sp) # indice de la case courante
+    mul $t6 $t6 4 # offset
+    addu $t6 $a0 $t6 # adresse de la case
+    lw $t7 0($t6) # on récupère la valeur de la case
+    addi $t7 $t7 64 # on marque la case comme faisant parti du "chemin solution"
+    sw $t7 0($t6)
+
+    subi $s2 $s2 4
+    addu $sp $sp 4
+    j FinDeplaceLaby
+
+
+
+    FinResolutionLabyrinthe:
+    mul $a1 $a2 $a2                 # $a1 = taille tu tableau (N*N)
     jal EnleverViste
 
     # épilogue
@@ -911,10 +913,10 @@ move $a0 $t6
 
 
 # Permet de savoir si il y a un mur à un endroit spécifique
-# $a0 : Adresse du premier élément du tableau
-# $a1 : Indice de la case à tester
-# $a2 : Nombre qui détermine à quel endroit tester (1: mur en haut, 2: mur à droite, 4: mur en bas, 8: mur à gauche)
-# $v0 : 1 si mur, 0 si pas de murs
+# Entrées : $a0 = Adresse du premier élément du tableau
+#           $a1 = Indice de la case à tester
+#           $a2 = Nombre qui détermine à quel endroit tester (1: mur en haut, 2: mur à droite, 4: mur en bas, 8: mur à gauche)
+# Sortie :  $v0 = 1 si mur, 0 si pas de murs
 TestMur:
     # prologue
     subu $sp $sp 8
@@ -922,9 +924,9 @@ TestMur:
     sw $s1 0($sp)
 
     # corps de la fonction
-    mul $s0 $a1 4 # offset
-    add $s0 $a0 $s0 # adresse de la case à tester
-    lw $s1 0($s0) # $s1 : valeur de la case
+    mul $s0 $a1 4               # offset
+    add $s0 $a0 $s0             # adresse de la case à tester
+    lw $s1 0($s0)               # $s1 : valeur de la case
     and $v0 $a2 $s1
     beqz $v0 FinTestMur
     li $v0 1
