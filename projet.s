@@ -63,6 +63,8 @@ genereLabyrinthe:
     jal VideFichier         # On vide d'abord le fichier
     jal ConstruireLabyrinthe
     jal AfficheTableau
+    move $a0 $a1
+    move $a1 $s0
     jal resoudreLabyrinthe
   
     j Exit
@@ -779,17 +781,30 @@ resoudreLabyrinthe:
     sw $a1 0($sp)
     li $s2 4 #compteur
 
-    BoucleParcoursResolution:
+    BoucleResolutionLabyrinthe:
     jal VoisinResolution
-    beq $v0 -1 FinBoucleParcoursResolution
-    move $a2 $v0 # indice d'un des voisins
-    jal MarqueVisite # Marque la case courante comme visitée
-    lw $a2 16($sp) # on récupère la valeur de N (stockée dans la pile, originalement dans $a0)
-    j BoucleConstruireLabyrinthe
+    beq $v0 -1 MarcheArriereR
+    move $a2 $v0
+    move $a1 $a2            # indice d'un des voisins
+    jal MarqueVisite        # Marque la case courante comme visitée
+    move $a2 $s0
+    subu $sp $sp 4
+    sw $a1 0($sp)
+    addi $s2 $s2 4
 
-    # epilogue
-    FinBoucleParcoursResolution:
-    mul $a1 $a2 $a2 # $a1 = taille tu tableau (N*N)
+    j BoucleResolutionLabyrinthe
+
+    MarcheArriereR:
+    addu $sp $sp 4          # case bloquée
+    subi $s2 $s2 4
+    ble $s2 4 FinBoucleResolutionLabyrinthe
+    lw $a1 0($sp)
+    j BoucleResolutionLabyrinthe
+
+    # épilogue
+    FinBoucleResolutionLabyrinthe:
+    addu $sp $sp 4          # case de départ
+    mul $a1 $a2 $a2         # $a1 = taille tu tableau (N*N)
     jal EnleverViste
 
     lw $a0 16($sp)
@@ -856,13 +871,13 @@ TrouverCaseDepart:
 	lw $s0 0($a0) # On stocke la valeur de la case dans $s0
 	CaseSuivante:
 	and $v0 $s0 $t0 # On test si il y a un bit en B4
-	beqz $v0 CaseSuivante # Si le test est vrai on passe à la case suivante
-	bnez $v0 FinCaseDepart # Sinon on a trouvé la case de départ
 	addi $a0 $a0 4
 	lw $s0 0($a0)
 	mul $s1 $a1 $a1
 	mul $s1 $s1 4
 	add $s1 $a0 $s1
+	beqz $v0 CaseSuivante # Si le test est vrai on passe à la case suivante
+	bnez $v0 FinCaseDepart # Sinon on a trouvé la case de départ
 	beq $a0 $s1 FinCaseDepart
 	j CaseSuivante
 	FinCaseDepart:
@@ -976,17 +991,16 @@ VoisinResolution:
     li $v0 -1                       # valeur de retour par défaut
     li $v1 -1                       # valeur de retour par défaut
 
-    div $s1 $s0 8                   # on récupère le nombre de voisins ajoutés sur la pile
-    beq $s1 $0 FinVoisinR            # si aucun voisin n'a été trouvé, on a pas besoin de faire ce qui suit
+    div $s1 $s0 4                   # on récupère le nombre de voisins ajoutés sur la pile
+    beqz $s1 FinVoisinR            # si aucun voisin n'a été trouvé, on a pas besoin de faire ce qui suit
 
     li $a0 0
     move $a1 $s1                    # borne sup = $s1
     li $v0 42                       # genere un nombre aléatoire dans $a0, 0 <= $a0 < borne sup ($a1)
     syscall
-    move $s2 $a0
-    mul $s2 $s2 8                   # on calcul l'offset pour récupérer le bon voisin
+    move $s2 $a0		    # On met le nombre aléatoire dans $s2
+    mul $s2 $s2 4                   # on calcul l'offset pour récupérer le bon voisin
     addu $s2 $sp $s2                # on récupère la bonne adresse sur la pile
-    lw $v1 4($s2)                   # $v1 contient désormais la direction (0 : haut, 1 : droite, 2 : bas, 3 : gauche)
     lw $v0 0($s2)                   # $v0 contient désormais l'indice d'un voisin choisi aléatoirement
 
     addu $sp $sp $s0                # on libère la place sur la pile
