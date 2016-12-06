@@ -24,6 +24,9 @@ ExtTxt:
 ExtResolu:
     .asciiz ".resolu"
 
+# Debug
+RetChar: .asciiz "\n"
+
 
 .text
 .globl __start
@@ -850,12 +853,63 @@ ResolutionLabyrinthe:
     move $a0 $a1 # adresse du premier élément du tableau
     move $a1 $t0 # N
 
+    jal TrouverCaseFin
+    move $s4 $v0 # on sauvegarde l'indice de la case de fin dans $s4
+
     jal TrouverCaseDepart
     move $a2 $a1 # N
     move $a1 $v0 # indice de la case de départ
+    jal MarqueVisite # Marque la case courante comme visitée
 
+    subu $sp $sp 4
+    sw $a1 0($sp)
+    li $s2 4 #compteur (initialisé à 4,car on met direct la case de départ)
+
+
+    #####
+    # $a1 = case courante
+    DeplaceLaby:
     jal VoisinResolution
-    move $a0 $v0
+    move $a1 $v0
+    jal MarqueVisite # Marque la case courante comme visitée
+
+move $t6 $a0
+move $a0 $a1
+li $v0 1
+syscall
+la $a0 RetChar
+li $v0 4
+syscall
+move $a0 $t6
+
+    beq $a1 -1 MarcheArriereR
+    beq $a1 $s4 FinDeplaceLaby
+
+    subu $sp $sp 4
+    sw $a1 0($sp)
+    addi $s2 $s2 4 #on incrémente le compteur
+
+    j DeplaceLaby
+
+
+
+    MarcheArriereR:
+    addu $sp $sp 4          # case bloquée
+    subi $s2 $s2 4
+    beq $a1 $s4 FinDeplaceLaby
+    lw $a1 0($sp) # sinon on charge la valeur de la case précédente
+    j DeplaceLaby
+
+    # épilogue
+    FinDeplaceLaby:
+    addu $sp $sp $s2
+
+    addu $sp $sp 4          # case de départ
+    mul $a1 $a2 $a2         # $a1 = taille tu tableau (N*N)
+    jal EnleverViste
+
+
+    #####
 
     # épilogue
     lw $a0 12($sp)
@@ -865,6 +919,73 @@ ResolutionLabyrinthe:
     addu $sp $sp 16
 
     jr $ra
+
+# # Résolution d'un labyrinthe
+# resoudreLabyrinthe:
+
+#     DeplaceLaby:
+#     # prologue (ra s0 s1 a0 a1)
+#     subu $sp $sp 20
+#     sw $a0 16($sp) #$a0 = N
+#     sw $a1 12($sp) #$a1 = l'adresse de la première case du tableau
+#     sw $s0 8($sp)
+#     sw $s1 4($sp)
+#     sw $ra 0($sp)
+
+#     # corps de la fonction
+#     move $s0 $a0 #On sauvegarde N dans $s0
+#     move $s1 $a1 #On sauvegarde l'adresse de la première case du tableau dans $s1
+#     move $a2 $a0 # $a2 = N
+
+#     jal TrouverCaseDepart # $v0 contient l'indice de la case départ
+
+#     move $a0 $v0
+#     li $v0 1
+#     syscall
+#     j Exit
+
+#     move $a0 $s1 # $a0 = adresse du premier élément du tableau
+#     move $a1 $v0 # $a1 = case courante (initialisée à la case de départ)
+#     jal MarqueVisite # Marque la case courante comme visitée
+
+#     subu $sp $sp 4
+#     sw $a1 0($sp)
+#     li $s2 4 #compteur
+
+#     BoucleResolutionLabyrinthe:
+#     jal VoisinResolution
+#     beq $v0 -1 MarcheArriereR
+#     move $a2 $v0
+#     move $a1 $a2            # indice d'un des voisins
+#     jal MarqueVisite        # Marque la case courante comme visitée
+#     move $a2 $s0
+#     subu $sp $sp 4
+#     sw $a1 0($sp)
+#     addi $s2 $s2 4
+
+#     j BoucleResolutionLabyrinthe
+
+#     MarcheArriereR:
+#     addu $sp $sp 4          # case bloquée
+#     subi $s2 $s2 4
+#     ble $s2 4 FinBoucleResolutionLabyrinthe
+#     lw $a1 0($sp)
+#     j BoucleResolutionLabyrinthe
+
+#     # épilogue
+#     FinBoucleResolutionLabyrinthe:
+#     addu $sp $sp 4          # case de départ
+#     mul $a1 $a2 $a2         # $a1 = taille tu tableau (N*N)
+#     jal EnleverViste
+
+#     lw $a0 16($sp)
+#     lw $a1 12($sp)
+#     lw $s0 8($sp)
+#     lw $s1 4($sp)
+#     lw $ra 0($sp)
+#     addu $sp $sp 20
+
+#     jr $ra
 
 
 #Permet de savoir si il y a un mur à un endroit spécifique
@@ -925,8 +1046,6 @@ VoisinResolution:
     subi $t3 $t1 1                  # $t3=N-1
     mul $t4 $t1 $t3                 # $t4=N*(N-1)
 
-
-
     # On cherche les différents voisins disponibles
     beq $t2 0 FinVoisinRGauche       # Si X%N = 0 alors pas de voisin à gauche
     subi $a1 $t0 1                  # sinon l'indice vaut X-1
@@ -942,9 +1061,6 @@ VoisinResolution:
     sw $a1 0($sp)                   # on sauvegarde l'indice du voisin trouvé sur la pile
     FinVoisinRGauche:
 
-
-
-
     beq $t3 $t2 FinVoisinRDroite     # Si X%N = N-1 alors pas de voisin à droite
     addi $a1 $t0 1                  # sinon l'indice vaut X+1
     jal TesteVisite                 # on vérifie si la case a déjà été visitée
@@ -958,10 +1074,6 @@ VoisinResolution:
     subu $sp $sp 4                  # on fait de la place sur la pile pour stocker l'indice de ce voisin
     sw $a1 0($sp)                   # on sauvegarde l'indice du voisin trouvé sur la pile
     FinVoisinRDroite:
-
-
-
-
 
     blt $t0 $t1 FinVoisinRHaut       # Si X<N alors il n'y a pas de voisin en haut
     sub $a1 $t0 $t1                 # sinon l'indice vaut X-N
@@ -977,9 +1089,6 @@ VoisinResolution:
     sw $a1 0($sp)                   # on sauvegarde l'indice du voisin trouvé sur la pile
     FinVoisinRHaut:
 
-
-
-
     bge $t0 $t4 FinVoisinRBas        # Si X >= N*(N-1) alors il n'y a pas de voisin en bas
     add $a1 $t0 $t1                 # Sinon l'infice vaut X+N
     jal TesteVisite                 # on vérifie si la case a déjà été visitée
@@ -994,13 +1103,9 @@ VoisinResolution:
     sw $a1 0($sp)                   # on sauvegarde l'indice du voisin trouvé sur la pile
     FinVoisinRBas:
 
-
-
-
     li $v0 -1                       # valeur de retour par défaut
 
     div $s1 $s0 4                   # on récupère le nombre de voisins ajoutés sur la pile
-
     beq $s1 $0 FinVoisinR            # si aucun voisin n'a été trouvé, on a pas besoin de faire ce qui suit
 
     li $a0 0
@@ -1161,6 +1266,51 @@ TrouverCaseDepart:
     beqz $v0 CaseSuivante # Si le test est vrai on passe à la case suivante
     j CaseSuivante
     FinCaseDepart:
+
+    subu $a0 $a0 $s2    # adresse finale - adresse initiale
+    div $a0 $a0 4       # on récupère l'indice (chaque case = 4 octets)
+    subi $a0 $a0 1      # on enlève 1, car on a commencé à traiter la première case avant
+    move $v0 $a0        # on met le bon indice sur la valeur de sortie, $v0
+
+    #epilogue
+    lw $a0 8($sp)
+    lw $a1 4($sp)
+    lw $ra 0($sp)
+    addu $sp $sp 12
+
+    jr $ra
+
+
+# Fonction qui permet de trouver la case de fin
+## Entrées : $a0 = adresse du premier élément du tableau
+##           $a1 = N
+## Sortie:   $v0 = adresse de la case de fin
+TrouverCaseFin:
+    # prologue
+    subu $sp $sp 12
+    sw $a0 8($sp)
+    sw $a1 4($sp)
+    sw $ra 0($sp)
+
+    #corps de la fonction
+    move $s2 $a0 # $s2 : adresse du premier élement du tableau
+
+    li $t0 32 # masque pour trouver le bit de fin
+    lw $s0 0($a0) # On stocke la valeur de la case dans $s0
+
+    mul $s1 $a1 $a1
+    mul $s1 $s1 4
+    add $s1 $a0 $s1 # $s1 : l'adresse de la case de fin
+
+    CaseSuivanteFin:
+    and $v0 $s0 $t0 # On test si il y a un bit en B5
+    addi $a0 $a0 4
+    bnez $v0 FinCaseDepartFin # Sinon on a trouvé la case de fin
+    beq $a0 $s1 FinCaseDepartFin
+    lw $s0 0($a0) # on charge la nouvelle valeur
+    beqz $v0 CaseSuivanteFin # Si le test est vrai on passe à la case suivante
+    j CaseSuivanteFin
+    FinCaseDepartFin:
 
     subu $a0 $a0 $s2    # adresse finale - adresse initiale
     div $a0 $a0 4       # on récupère l'indice (chaque case = 4 octets)
