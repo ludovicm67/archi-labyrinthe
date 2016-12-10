@@ -137,7 +137,7 @@ GenererLabyrinthe:
     move $a1 $v0            # on fait en sorte que $a1 contienne l'adresse du premier élément du tableau
 
     jal ConstruireLabyrinthe
-    jal AfficheTableau
+    jal SauvegarderTableau
 
     j Exit
 
@@ -254,15 +254,15 @@ EnleverViste:
 
     # Corps de la fonction
     li $t0 -1                       # Compteur pour la boucle (initialisé à -1, car on va commencer par incrémenter dans la boucle)
-    li $t5 128                      # Valeur à soustraire pour les cases du labyrinthe
+    li $t5 128                      # Valeur à ajouter pour les cases du labyrinthe
 
     BoucleEnleverViste:
     addu $t0 $t0 1                  # On incrémente le compteur de 1
     beq $t0 $a1 FinBoucleEnleverViste # Si $t0=$a0 ($t0:compteur, $a1: taille) alors c'est qu'on a rempli le tableau
     addu $t1 $a0 $t0                # Sinon on ajoute la valeur du compteur à l'adresse pour se déplacer dans le tableau et on met ça dans $t1
     lb $t2 0($t1)                   # On récupère la valeur de la case
-    blt $t2 $t5 BoucleEnleverViste  # Si cette case a une valeur inférieure à 128, on passe directement à la case suivante
-    sub $t2 $t2 $t5                 # Sinon on lui soustrait 128
+    bge $t2 $0 BoucleEnleverViste   # Si cette case a une valeur positive, on passe directement à la case suivante
+    add $t2 $t2 $t5                 # Sinon on lui ajoute 128
 
     sb $t2 0($t1)                   # On remplit la case courante du tableau (à l'adresse $t1) avec la nouvelle valeur
     j BoucleEnleverViste            # On recommence (:
@@ -302,7 +302,7 @@ ModifieTableau:
 # Permet d'afficher le contenu d'un tableau carré (N*N)
 ## Entrée : $a0 = N, le nombre de lignes/colonnes (prec : $a0>=0)
 ##          $a1 = adresse du premier élément du tableau
-AfficheTableau:
+SauvegarderTableau:
 
     # Prologue
     subu $sp $sp 24
@@ -338,8 +338,8 @@ AfficheTableau:
     move $a2 $v1            # Deuxième digit
     jal EcrireDansFichier
 
-    BoucleAfficheTableau:
-    beq $t2 $t0 FinBoucleAfficheTableau # Si on a parcouru toutes les cases du tableau, on sort de la boucle
+    BoucleSauvegarderTableau:
+    beq $t2 $t0 FinBoucleSauvegarderTableau # Si on a parcouru toutes les cases du tableau, on sort de la boucle
 
     # On traite ici le cas du saut de ligne
     blt $t1 $s0 ApresSautDeLigne   # Si on est pas encore en fin de ligne, on ne saute pas de ligne
@@ -370,10 +370,10 @@ AfficheTableau:
     addu $t2 $t2 1          # On incrémente $t2 de 1 (on avance d'une case du tableau, l'offset augmente donc de 1)
     addu $t1 $t1 1          # On incrémente $t1 de 1 (on avance d'une colonne)
 
-    j BoucleAfficheTableau
+    j BoucleSauvegarderTableau
 
     # On ferme le fichier
-    FinBoucleAfficheTableau:
+    FinBoucleSauvegarderTableau:
     move $a0 $a3            # Descripteur du fichier à fermer
     li $v0 16               # Appel système pour fermer un fichier
     syscall
@@ -432,7 +432,7 @@ EcrireDansFichier:
     move $a0 $a3            # Descripteur du fichier
     la $a1 buffer           # Adresse du buffer à partir duquel on doit écrire
     lw $s1 16($sp)          # Premier caractère à écrire
-    sb $s1 ($a1)            # On place notre caractère dans le buffer
+    sb $s1 0($a1)           # On place notre caractère dans le buffer
     li $a2 1                # Taille du buffer = 1 (on écrit caractère par caractère)
     li $v0 15               # Appel système pour écrire dans un fichier
     syscall
@@ -440,7 +440,7 @@ EcrireDansFichier:
     lw $s1 20($sp)          # On met $s1 à la valeur originale de $a0
     bne $s1 2 FinEcrireDansFichier  # Si on ne souhaitais pas afficher 2 caractères, on a fini
     lw $s1 12($sp)          # Deuxième caractère à écrire
-    sb $s1 ($a1)            # On place notre caractère dans le buffer
+    sb $s1 0($a1)           # On place notre caractère dans le buffer
     li $v0 15               # Appel système pour écrire dans un fichier
     syscall
 
@@ -478,21 +478,21 @@ PlacerDepartEtArrivee:
     ## Départ d (sera stockée dans $t2)
     li $a0 0
     move $a1 $t0        # Borne sup = N
-    li $v0 42           # Genère un nombre aléatoire dans $a0, 0 <= $a0 < $a1
+    li $v0 42           # Génère un nombre aléatoire dans $a0, 0 <= $a0 < $a1
     syscall
     move $t2 $a0
 
     ## Arrivée f (sera stockée dans $t3)
     li $a0 0
     move $a1 $t0        # Borne sup = N
-    li $v0 42           # Genère un nombre aléatoire dans $a0, 0 <= $a0 < $a1
+    li $v0 42           # Génère un nombre aléatoire dans $a0, 0 <= $a0 < $a1
     syscall
     move $t3 $a0
 
     # On génère une valeur, qui vaut soit 0, 1, 2, ou 3 pour déterminer la configuration
     li $a0 0
     li $a1 4            # Borne sup = N
-    li $v0 42           # Genère un nombre aléatoire dans $a0, 0 <= $a0 < $a1
+    li $v0 42           # Génère un nombre aléatoire dans $a0, 0 <= $a0 < $a1
     syscall
     move $t4 $a0
 
@@ -649,7 +649,7 @@ Voisin:
 
     li $a0 0
     move $a1 $s1                    # Borne sup = $s1
-    li $v0 42                       # Genère un nombre aléatoire dans $a0, 0 <= $a0 < $a1
+    li $v0 42                       # Génère un nombre aléatoire dans $a0, 0 <= $a0 < $a1
     syscall
     move $s2 $a0
     mul $s2 $s2 8                   # On calcule l'offset pour récupérer le bon voisin
@@ -772,12 +772,10 @@ MarqueVisite:
     add $a1 $a0 $a1         # Adresse de l'élément à modifier
     lb $a2 0($a1)           # Récupération de la valeur actuelle de la case
     lw $a1 8($sp)           # Récupération de la valeur originale de $a1
-    bge $a2 128 FinMarqueVisite
     addiu $a2 $a2 128
     jal ModifieTableau
 
     # Epilogue
-    FinMarqueVisite:
     lw $a2 4($sp)
     lw $ra 0($sp)
     addu $sp $sp 12
@@ -801,7 +799,7 @@ TesteVisite:
     add $a1 $a0 $a1             # Adresse de la case à tester
     lb $a0 0($a1)               # Valeur de la case à tester
     li $v0 0                    # On dit par défaut que la case n'a pas été visitée
-    blt $a0 128 FinTesteVisite  # Si la valeur de la case est effectivement < 128, on a fini
+    bge $a0 $0 FinTesteVisite   # Si la valeur de la case est effectivement positive, on a fini
     li $v0 1                    # Sinon c'est que la case a été visitée
 
     # Epilogue
@@ -825,11 +823,11 @@ ResoudreLabyrinthe:
     jal Concatener
 
     # On récupère les sorties de ImporterTableauDepuisFichier appelé précédemment
-    move $a0 $v0        # nombre de lignes/colonnes du labyrinthe : N
-    move $a1 $v1        # adresse du premier élément du tableau
+    move $a0 $v0                # Nombre de lignes/colonnes du labyrinthe : N
+    move $a1 $v1                # Adresse du premier élément du tableau
 
     jal ResolutionLabyrinthe
-    jal AfficheTableau  # On écrit le contenu du tableau dans le fichier de sortie
+    jal SauvegarderTableau      # On écrit le contenu du tableau dans le fichier de sortie
 
     j Exit
 
@@ -838,7 +836,8 @@ ResoudreLabyrinthe:
 # Entrées : $a0 = N
 #           $a1 = adresse du premier élément du tableau
 ResolutionLabyrinthe:
-    # prologue
+
+    # Prologue
     subu $sp $sp 16
     sw $a0 12($sp)
     sw $a1 8($sp)
@@ -846,56 +845,56 @@ ResolutionLabyrinthe:
     sw $ra 0($sp)
 
     move $t0 $a0
-    move $a0 $a1 # adresse du premier élément du tableau
-    move $a1 $t0 # N
+    move $a0 $a1                # Adresse du premier élément du tableau
+    move $a1 $t0                # N
 
     jal TrouverCaseFin
-    move $s4 $v0 # on sauvegarde l'indice de la case de fin dans $s4
+    move $s4 $v0                # On sauvegarde l'indice de la case de fin dans $s4
 
     jal TrouverCaseDepart
-    move $a2 $a1 # N
-    move $a1 $v0 # indice de la case de départ
-    jal MarqueVisite # Marque la case courante comme visitée
+    move $a2 $a1                # N
+    move $a1 $v0                # Indice de la case de départ
+    jal MarqueVisite            # Marque la case courante comme visitée
 
-    li $s2 0 #compteur
+    li $s2 0                    # Compteur
 
+    # On se déplace dans le labyrinthe
     DeplaceLaby:
     jal VoisinResolution
     move $a1 $v0
-    jal MarqueVisite                # Marque la case courante comme visitée
-    beq $a1 -1 MarcheArriereR       # Si on est coincé, on dépile
-    beq $a1 $s4 FinDeplaceLaby      # Si on tombe sur la case de fin, alors on sort de la boucle
-    subu $sp $sp 4
-    sw $a1 0($sp)
-    addi $s2 $s2 4                  # on incrémente le compteur de 4
+    jal MarqueVisite            # Marque la case courante comme visitée
+    beq $a1 -1 MarcheArriereR   # Si on est coincé, on dépile
+    beq $a1 $s4 MarqueCheminSolution  # Si on tombe sur la case de fin, alors on sort de la boucle
+    subu $sp $sp 4              # On réserve de la place sur la pile pour une case
+    sw $a1 0($sp)               # On y stocke l'indice
+    addi $s2 $s2 4              # On incrémente le compteur de 4
     j DeplaceLaby
 
+    # Pour reculer si jamais on se retrouve bloqué
     MarcheArriereR:
-    addu $sp $sp 4                  # case bloquée, on dépile
-    subi $s2 $s2 4
-    beq $a1 $s4 FinDeplaceLaby      # Si on est à la fin, alors on sort de la boucle
-    lw $a1 0($sp)                   # sinon on charge la valeur de la case précédente
-    j DeplaceLaby                   # ...et on retourne dans la boucle
+    addu $sp $sp 4              # Case bloquée, on dépile
+    subi $s2 $s2 4              # On décrémente le compteur
+    beq $a1 $s4 MarqueCheminSolution  # Si on est à la fin, alors on sort de la boucle
+    lw $a1 0($sp)               # Sinon on charge la valeur de la case précédente
+    j DeplaceLaby               # ...et on retourne dans la boucle
 
-    FinDeplaceLaby:
-    beqz $s2 FinResolutionLabyrinthe
-
-    lw $t6 0($sp) # indice de la case courante
-    mul $t6 $t6 4 # offset
-    addu $t6 $a0 $t6 # adresse de la case
-    lw $t7 0($t6) # on récupère la valeur de la case
-    addi $t7 $t7 64 # on marque la case comme faisant parti du "chemin solution"
-    sw $t7 0($t6)
-
-    subi $s2 $s2 4
-    addu $sp $sp 4
-    j FinDeplaceLaby
+    # Permet de marquer le chemin empilé comme chemin solution
+    MarqueCheminSolution:
+    beqz $s2 FinResolutionLabyrinthe # Si le compteur est à 0, on a fini
+    lw $t6 0($sp)               # On récupère l'indice de la case courante
+    addu $t6 $a0 $t6            # Adresse de la case courante
+    lb $t7 0($t6)               # On récupère la valeur de la case
+    addi $t7 $t7 64             # On marque la case comme faisant parti du "chemin solution"
+    sb $t7 0($t6)               # On met à jour la valeur de la case
+    subi $s2 $s2 4              # On décrémente le compteur
+    addu $sp $sp 4              # On libère la place sur la pile
+    j MarqueCheminSolution
 
     FinResolutionLabyrinthe:
-    mul $a1 $a2 $a2                 # $a1 = taille tu tableau (N*N)
+    mul $a1 $a2 $a2             # $a1 = taille tu tableau (N*N)
     jal EnleverViste
 
-    # épilogue
+    # Epilogue
     lw $a0 12($sp)
     lw $a1 8($sp)
     lw $s0 4($sp)
@@ -911,20 +910,20 @@ ResolutionLabyrinthe:
 #           $a2 = Nombre qui détermine à quel endroit tester (1: mur en haut, 2: mur à droite, 4: mur en bas, 8: mur à gauche)
 # Sortie :  $v0 = 1 si mur, 0 si pas de murs
 TestMur:
-    # prologue
+
+    # Prologue
     subu $sp $sp 8
     sw $s0 4($sp)
     sw $s1 0($sp)
 
-    # corps de la fonction
-    mul $s0 $a1 4               # offset
-    add $s0 $a0 $s0             # adresse de la case à tester
-    lw $s1 0($s0)               # $s1 : valeur de la case
-    and $v0 $a2 $s1
-    beqz $v0 FinTestMur
-    li $v0 1
+    # Corps de la fonction
+    add $s0 $a0 $a1             # Adresse de la case à tester
+    lb $s1 0($s0)               # $s1 : valeur de la case
+    and $v0 $a2 $s1             # On vérifie la présence du bit de mur en question
+    beqz $v0 FinTestMur         # Si pas de mur on retourne $v0=0
+    li $v0 1                    # Sinon $v0=1
 
-    # épilogue
+    # Epilogue
     FinTestMur:
     lw $s0 4($sp)
     lw $s1 0($sp)
@@ -936,10 +935,11 @@ TestMur:
 # Retourne l'indice d'un des voisins
 ## Entrée : $a0 : adresse du premier élément du tableau contenant le labyrinthe
 ##          $a1 : indice X de la case courante
-##          $a2 : valeur de N entrée au début par l'utilisateur
+##          $a2 : valeur de N
 ## Sortie : $v0 : l'indice d'un des voisins choisis aléatoirement (vaut -1 si aucun voisin)
 VoisinResolution:
-    # prologue
+
+    # Prologue
     subu $sp $sp 32
     sw $a0 28($sp)
     sw $a1 24($sp)
@@ -950,7 +950,7 @@ VoisinResolution:
     sw $s2 4($sp)
     sw $ra 0($sp)
 
-    # corps de la fonction
+    # Corps de la fonction
     li $s0 0                        # Compteur du nombre de voisins initialisé à 0
     move $t0 $a1                    # X
     move $t1 $a2                    # N
@@ -962,77 +962,81 @@ VoisinResolution:
     mul $t4 $t1 $t3                 # $t4=N*(N-1)
 
     # On cherche les différents voisins disponibles
-    beq $t2 0 FinVoisinRGauche       # Si X%N = 0 alors pas de voisin à gauche
-    subi $a1 $t0 1                  # sinon l'indice vaut X-1
-    jal TesteVisite                 # on vérifie si la case a déjà été visitée
-    beq $v0 1 FinVoisinRGauche       # si c'est le cas, ce voisin n'est plus disponible
+    beq $t2 0 FinVoisinRGauche      # Si X%N = 0 alors pas de voisin à gauche
+    subi $a1 $t0 1                  # Sinon l'indice vaut X-1
+    jal TesteVisite                 # On vérifie si la case a déjà été visitée
+    beq $v0 1 FinVoisinRGauche      # Si c'est le cas, ce voisin n'est plus disponible
 
+    # On vérifie la présence d'un mur; si c'est le cas cette case ne peut être la prochaine case
     li $a2 2
     jal TestMur
     bnez $v0 FinVoisinRGauche
 
-    addi $s0 $s0 4                  # on incremente le compteur de 4
-    subu $sp $sp 4                  # on fait de la place sur la pile pour stocker l'indice de ce voisin
-    sw $a1 0($sp)                   # on sauvegarde l'indice du voisin trouvé sur la pile
+    addi $s0 $s0 4                  # On incremente le compteur de 4
+    subu $sp $sp 4                  # On fait de la place sur la pile pour stocker l'indice de ce voisin
+    sw $a1 0($sp)                   # On sauvegarde l'indice du voisin trouvé sur la pile
     FinVoisinRGauche:
 
-    beq $t3 $t2 FinVoisinRDroite     # Si X%N = N-1 alors pas de voisin à droite
-    addi $a1 $t0 1                  # sinon l'indice vaut X+1
-    jal TesteVisite                 # on vérifie si la case a déjà été visitée
-    beq $v0 1 FinVoisinRDroite       # si c'est le cas, ce voisin n'est plus disponible
+    beq $t3 $t2 FinVoisinRDroite    # Si X%N = N-1 alors pas de voisin à droite
+    addi $a1 $t0 1                  # Sinon l'indice vaut X+1
+    jal TesteVisite                 # On vérifie si la case a déjà été visitée
+    beq $v0 1 FinVoisinRDroite      # Si c'est le cas, ce voisin n'est plus disponible
 
+    # On vérifie la présence d'un mur; si c'est le cas cette case ne peut être la prochaine case
     li $a2 8
     jal TestMur
     bnez $v0 FinVoisinRDroite
 
-    addi $s0 $s0 4                  # on incremente le compteur de 4
-    subu $sp $sp 4                  # on fait de la place sur la pile pour stocker l'indice de ce voisin
-    sw $a1 0($sp)                   # on sauvegarde l'indice du voisin trouvé sur la pile
+    addi $s0 $s0 4                  # On incremente le compteur de 4
+    subu $sp $sp 4                  # On fait de la place sur la pile pour stocker l'indice de ce voisin
+    sw $a1 0($sp)                   # On sauvegarde l'indice du voisin trouvé sur la pile
     FinVoisinRDroite:
 
-    blt $t0 $t1 FinVoisinRHaut       # Si X<N alors il n'y a pas de voisin en haut
-    sub $a1 $t0 $t1                 # sinon l'indice vaut X-N
-    jal TesteVisite                 # on vérifie si la case a déjà été visitée
-    beq $v0 1 FinVoisinRHaut         # si c'est le cas, ce voisin n'est plus disponible
+    blt $t0 $t1 FinVoisinRHaut      # Si X<N alors il n'y a pas de voisin en haut
+    sub $a1 $t0 $t1                 # Sinon l'indice vaut X-N
+    jal TesteVisite                 # On vérifie si la case a déjà été visitée
+    beq $v0 1 FinVoisinRHaut        # Si c'est le cas, ce voisin n'est plus disponible
 
+    # On vérifie la présence d'un mur; si c'est le cas cette case ne peut être la prochaine case
     li $a2 4
     jal TestMur
     bnez $v0 FinVoisinRHaut
 
-    addi $s0 $s0 4                  # on incremente le compteur de 8
-    subu $sp $sp 4                  # on fait de la place sur la pile pour stocker l'indice de ce voisin
-    sw $a1 0($sp)                   # on sauvegarde l'indice du voisin trouvé sur la pile
+    addi $s0 $s0 4                  # On incremente le compteur de 8
+    subu $sp $sp 4                  # On fait de la place sur la pile pour stocker l'indice de ce voisin
+    sw $a1 0($sp)                   # On sauvegarde l'indice du voisin trouvé sur la pile
     FinVoisinRHaut:
 
-    bge $t0 $t4 FinVoisinRBas        # Si X >= N*(N-1) alors il n'y a pas de voisin en bas
+    bge $t0 $t4 FinVoisinRBas       # Si X >= N*(N-1) alors il n'y a pas de voisin en bas
     add $a1 $t0 $t1                 # Sinon l'infice vaut X+N
-    jal TesteVisite                 # on vérifie si la case a déjà été visitée
-    beq $v0 1 FinVoisinRBas          # si c'est le cas, ce voisin n'est plus disponible
+    jal TesteVisite                 # On vérifie si la case a déjà été visitée
+    beq $v0 1 FinVoisinRBas         # Si c'est le cas, ce voisin n'est plus disponible
 
+    # On vérifie la présence d'un mur; si c'est le cas cette case ne peut être la prochaine case
     li $a2 1
     jal TestMur
     bnez $v0 FinVoisinRBas
 
-    addi $s0 $s0 4                  # on incremente le compteur de 4
-    subu $sp $sp 4                  # on fait de la place sur la pile pour stocker l'indice de ce voisin
-    sw $a1 0($sp)                   # on sauvegarde l'indice du voisin trouvé sur la pile
+    addi $s0 $s0 4                  # On incremente le compteur de 4
+    subu $sp $sp 4                  # On fait de la place sur la pile pour stocker l'indice de ce voisin
+    sw $a1 0($sp)                   # On sauvegarde l'indice du voisin trouvé sur la pile
     FinVoisinRBas:
 
-    li $v0 -1                       # valeur de retour par défaut
+    li $v0 -1                       # Valeur de retour par défaut
 
-    div $s1 $s0 4                   # on récupère le nombre de voisins ajoutés sur la pile
-    beq $s1 $0 FinVoisinR            # si aucun voisin n'a été trouvé, on a pas besoin de faire ce qui suit
+    div $s1 $s0 4                   # On récupère le nombre de voisins ajoutés sur la pile
+    beq $s1 $0 FinVoisinR           # Si aucun voisin n'a été trouvé, on a pas besoin de faire ce qui suit
 
     li $a0 0
-    move $a1 $s1                    # borne sup = $s1
-    li $v0 42                       # genere un nombre aléatoire dans $a0, 0 <= $a0 < borne sup ($a1)
+    move $a1 $s1                    # Borne sup = $s1
+    li $v0 42                       # Génère un nombre aléatoire dans $a0, 0 <= $a0 < $a1
     syscall
     move $s2 $a0
-    mul $s2 $s2 4                   # on calcul l'offset pour récupérer le bon voisin
-    addu $s2 $sp $s2                # on récupère la bonne adresse sur la pile
+    mul $s2 $s2 4                   # On calcule l'offset pour récupérer le bon voisin
+    addu $s2 $sp $s2                # On récupère la bonne adresse sur la pile
     lw $v0 0($s2)                   # $v0 contient désormais l'indice d'un voisin choisi aléatoirement
 
-    addu $sp $sp $s0                # on libère la place sur la pile
+    addu $sp $sp $s0                # On libère la place sur la pile
 
     # épilogue
     FinVoisinR:
@@ -1053,7 +1057,8 @@ VoisinResolution:
 ## Sorties : $v0 = le nombre N de ligne/colonnes du labyrinthe importé
 ##           $v1 = adresse du premier élément du tableau
 ImporterTableauDepuisFichier:
-    # prologue
+
+    # Prologue
     subu $sp $sp 28
     sw $a0 24($sp)
     sw $a1 20($sp)
@@ -1064,82 +1069,81 @@ ImporterTableauDepuisFichier:
     sw $s3 0($sp)
 
     # Ouvrir le fichier
-    la $a0 fichier      # nom du fichier
-    li $a1 0            # ouverture du fichier en lecture (0 : lecture; 1 écriture, ...)
-    li $a2 0            # pas besoin de mode (ignoré)
-    li $v0 13           # appel système pour ouvrir un fichier
+    la $a0 fichier      # Nom du fichier
+    li $a1 0            # Ouverture du fichier en lecture (0 : lecture; 1 écriture, ...)
+    li $a2 0            # Pas besoin de mode (ignoré)
+    li $v0 13           # Appel système pour ouvrir un fichier
     syscall
     blt $v0 $0 ErreurFichierNonTrouve  # Le fichier n'existe pas, on relance le programme depuis le début
-    move $s0 $v0        # sauvegarde du descripteur du fichier
+    move $s0 $v0        # Sauvegarde du descripteur du fichier
 
     # Lecture du fichier
-    move $a0 $s0        # descripteur du fichier
-    la $a1 buffer       # adresse du buffer dans lequel on doit écrire
-    li $a2 1            # taille du buffer = 1
-    li $v0 14           # appel système pour lire un fichier
+    move $a0 $s0        # Descripteur du fichier
+    la $a1 buffer       # Adresse du buffer dans lequel on doit écrire
+    li $a2 1            # Taille du buffer = 1
+    li $v0 14           # Appel système pour lire un fichier
     syscall
 
-    lb $s1 0($a1)       # premier digit
-    subiu $s1 $s1 0x30  # on le convertit en entier
-    mul $s1 $s1 10      # on le multiplie par 10, car c'est le chiffre des dizaine
+    lb $s1 0($a1)       # Premier digit
+    subiu $s1 $s1 0x30  # On le convertit en entier
+    mul $s1 $s1 10      # On le multiplie par 10, car c'est le chiffre des dizaine
 
-    li $v0 14           # appel système pour lire un fichier
+    li $v0 14           # Appel système pour lire un fichier
     syscall
 
-    lb $s2 0($a1)       # deuxième digit
-    subiu $s2 $s2 0x30  # on le converti en entier
+    lb $s2 0($a1)       # Deuxième digit
+    subiu $s2 $s2 0x30  # On le converti en entier
 
     addu $t2 $s1 $s2    # $t2 contient la valeur de N
 
-    mul $s3 $t2 $t2     # $s3 = N*N
-    mul $a0 $s3 4       # taille du tableau à créer en octets (N*N*4 octets)
-    li $v0 9            # on récupère l'adresse du premier élément du tableau
+    mul $a0 $t2 $t2     # Taille du tableau à créer en octets (N*N octets)
+    li $v0 9            # On réserve de la place pour le tableau
     syscall             # $v0 contiendra donc l'adresse du premier élément du tableau
 
     move $v1 $v0        # Adresse du premier élément du tableau
-    move $t0 $v1        # on met aussi cette valeur dans $t0
+    move $t0 $v1        # On met aussi cette valeur dans $t0
     addu $t1 $t0 $a0    # Adresse de fin du tableau
 
     # On parcourt chaque caractère du fichier
     BoucleImporterTableau:
     beq $t0 $t1 FinBoucleImporterTableau
 
-    move $a0 $s0        # descripteur du fichier
-    la $a1 buffer       # adresse du buffer à partir duquel on doit écrire
+    move $a0 $s0        # Descripteur du fichier
+    la $a1 buffer       # Adresse du buffer à partir duquel on doit écrire
     li $a2 1            # Taille du buffer = 1
-    li $v0 14           # appel système pour lire un fichier
+    li $v0 14           # Appel système pour lire un fichier
     syscall
 
-    lb $s1 0($a1)       # caractère courant
+    lb $s1 0($a1)       # Caractère courant
 
     # Si le caractère courant n'est pas un chiffre on recommence
     blt $s1 48 BoucleImporterTableau
     bgt $s1 57 BoucleImporterTableau
 
-    subiu $s1 $s1 0x30  # on converti le premier digit en entier
-    mul $s1 $s1 10      # on le multiplie par 10, car c'est le chiffre des dizaine
+    subiu $s1 $s1 0x30  # On converti le premier digit en entier
+    mul $s1 $s1 10      # On le multiplie par 10, car c'est le chiffre des dizaine
 
-    li $v0 14           # appel système pour lire un fichier
+    li $v0 14           # Appel système pour lire un fichier
     syscall
 
-    lb $s2 0($a1)       # second digit
-    subiu $s1 $s1 0x30  # on le converti en entier
+    lb $s2 0($a1)       # Second digit
+    subiu $s1 $s1 0x30  # On le converti en entier
 
     addu $s3 $s1 $s2    # $s3 : entier de la case
-    sw $s3 0($t0)       # on sauvegarde la valeur dans la bonne case du tableau
+    sb $s3 0($t0)       # On sauvegarde la valeur dans la bonne case du tableau
 
-    addiu $t0 $t0 4
+    addiu $t0 $t0 1     # On incrémente $t0
     j BoucleImporterTableau
 
     # On ferme le fichier
     FinBoucleImporterTableau:
-    move $a0 $s0        # descripteur du fichier à fermer
-    li $v0 16           # appel système pour fermer un fichier
+    move $a0 $s0        # Descripteur du fichier à fermer
+    li $v0 16           # Appel système pour fermer un fichier
     syscall
 
     move $v0 $t2        # $v0 = N
 
-    # épilogue
+    # Epilogue
     lw $a0 24($sp)
     lw $a1 20($sp)
     lw $a2 16($sp)
@@ -1170,7 +1174,7 @@ ErreurFichierNonTrouve:
     subiu $t0 $t0 1                     # On décrémente notre compteur de nombre de '0' restants à insérer
     addu $t2 $t0 $t1                    # On récupère la bonne adresse pour la case courante
     sb $0 0($t2)                        # On met un '0' dans la case courante
-    beqz $t0 __start                    # Une fois que le buffer est nettoyé, on relance le programme
+    beqz $t0 __start                    # Une fois que le buffer est nettoyé, on relance le programme à partir du début
     j ResetFichierBuffer                # Sinon on continu le nettoyage
 
 
@@ -1179,38 +1183,36 @@ ErreurFichierNonTrouve:
 ##           $a1 = N
 ## Sortie:   $v0 = adresse de la case de départ
 TrouverCaseDepart:
-    # prologue
+
+    # Prologue
     subu $sp $sp 12
     sw $a0 8($sp)
     sw $a1 4($sp)
     sw $ra 0($sp)
 
-    #corps de la fonction
-    move $s2 $a0 # $s2 : adresse du premier élement du tableau
+    # Corps de la fonction
+    move $s2 $a0            # $s2 : adresse du premier élement du tableau
 
-    li $t0 16 # masque pour trouver le bit de départ
-    lw $s0 0($a0) # On stocke la valeur de la case dans $s0
+    li $t0 16               # Masque pour trouver le bit de départ
+    lb $s0 0($a0)           # On récupère la valeur de la case dans $s0
 
     mul $s1 $a1 $a1
-    mul $s1 $s1 4
-    add $s1 $a0 $s1 # $s1 : l'adresse de la case de fin
+    add $s1 $a0 $s1         # $s1 : l'adresse de la case de fin
 
     CaseSuivante:
-    and $v0 $s0 $t0 # On test si il y a un bit en B4
-    addi $a0 $a0 4
-    bnez $v0 FinCaseDepart # Sinon on a trouvé la case de départ
+    and $v0 $s0 $t0         # On teste si il y a un bit en B4
+    addi $a0 $a0 1          # On incrémente $a0, qui contient l'adresse de la case courante
+    bnez $v0 FinCaseDepart  # Sinon on a trouvé la case de départ
     beq $a0 $s1 FinCaseDepart
-    lw $s0 0($a0) # on charge la nouvelle valeur
-    beqz $v0 CaseSuivante # Si le test est vrai on passe à la case suivante
+    lb $s0 0($a0)           # On charge la nouvelle valeur
     j CaseSuivante
     FinCaseDepart:
 
-    subu $a0 $a0 $s2    # adresse finale - adresse initiale
-    div $a0 $a0 4       # on récupère l'indice (chaque case = 4 octets)
-    subi $a0 $a0 1      # on enlève 1, car on a commencé à traiter la première case avant
-    move $v0 $a0        # on met le bon indice sur la valeur de sortie, $v0
+    subu $a0 $a0 $s2        # Adresse finale - adresse initiale
+    subi $a0 $a0 1          # On enlève 1, car on a commencé à traiter la première case avant
+    move $v0 $a0            # On met le bon indice sur la valeur de sortie, $v0
 
-    #epilogue
+    # Epilogue
     lw $a0 8($sp)
     lw $a1 4($sp)
     lw $ra 0($sp)
@@ -1224,38 +1226,36 @@ TrouverCaseDepart:
 ##           $a1 = N
 ## Sortie:   $v0 = adresse de la case de fin
 TrouverCaseFin:
-    # prologue
+
+    # Prologue
     subu $sp $sp 12
     sw $a0 8($sp)
     sw $a1 4($sp)
     sw $ra 0($sp)
 
-    #corps de la fonction
-    move $s2 $a0 # $s2 : adresse du premier élement du tableau
+    # Corps de la fonction
+    move $s2 $a0            # $s2 : adresse du premier élement du tableau
 
-    li $t0 32 # masque pour trouver le bit de fin
-    lw $s0 0($a0) # On stocke la valeur de la case dans $s0
+    li $t0 32               # Masque pour trouver le bit de fin
+    lb $s0 0($a0)           # On récupère la valeur de la case dans $s0
 
     mul $s1 $a1 $a1
-    mul $s1 $s1 4
-    add $s1 $a0 $s1 # $s1 : l'adresse de la case de fin
+    add $s1 $a0 $s1         # $s1 : l'adresse de la case de fin
 
     CaseSuivanteFin:
-    and $v0 $s0 $t0 # On test si il y a un bit en B5
-    addi $a0 $a0 4
+    and $v0 $s0 $t0         # On teste si il y a un bit en B5
+    addi $a0 $a0 1
     bnez $v0 FinCaseDepartFin # Sinon on a trouvé la case de fin
     beq $a0 $s1 FinCaseDepartFin
-    lw $s0 0($a0) # on charge la nouvelle valeur
-    beqz $v0 CaseSuivanteFin # Si le test est vrai on passe à la case suivante
+    lb $s0 0($a0)           # On charge la nouvelle valeur
     j CaseSuivanteFin
     FinCaseDepartFin:
 
-    subu $a0 $a0 $s2    # adresse finale - adresse initiale
-    div $a0 $a0 4       # on récupère l'indice (chaque case = 4 octets)
-    subi $a0 $a0 1      # on enlève 1, car on a commencé à traiter la première case avant
-    move $v0 $a0        # on met le bon indice sur la valeur de sortie, $v0
+    subu $a0 $a0 $s2    # Adresse finale - adresse initiale
+    subi $a0 $a0 1      # On enlève 1, car on a commencé à traiter la première case avant
+    move $v0 $a0        # On met le bon indice sur la valeur de sortie, $v0
 
-    #epilogue
+    # Epilogue
     lw $a0 8($sp)
     lw $a1 4($sp)
     lw $ra 0($sp)
