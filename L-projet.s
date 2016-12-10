@@ -1,38 +1,30 @@
 .data
 
-# Textes pour les différentes demandes
-TexteDemanderNom:
-    .asciiz "Entrez un nom de fichier (sans extension) : "
+    # Textes pour les différentes demandes
+    TexteDemanderNom:
+        .asciiz "Entrez un nom de fichier (sans extension) : "
+    TexteMenu:
+        .asciiz "\nMENU :\n 1 - Génération d'un labyrinthe\n 2 - Résolution d'un labyrinthe\n\nEntrez votre choix : "
+    TexteDemanderN:
+        .asciiz "Veuillez entrer un entier N compris entre 2 et 99 : "
 
-TexteMenu:
-    .asciiz "\nMENU :\n 1 - Génération d'un labyrinthe\n 2 - Résolution d'un labyrinthe\n\nEntrez votre choix : "
+    # Textes pour l'affichage des erreurs
+    TexteErreurFichier404:
+        .asciiz "\n\tLe fichier '"
+    TexteErreurFichier404Fin:
+        .asciiz "' n'existe pas. Veuillez réessayer !\n\n"
 
-TexteDemanderN:
-    .asciiz "Veuillez entrer un entier N compris entre 2 et 99 : "
+    # On réserve de la place (buffer, nom du fichier)
+    fichier:
+        .space 1024     # On réserve de la place pour stocker le nom du fichier
+    buffer:
+        .space 1        # On initialise un buffer de taille 1
 
-
-# Textes pour l'affichage des erreurs
-TexteErreurFichier404:
-    .asciiz "\n\tLe fichier '"
-
-TexteErreurFichier404Fin:
-    .asciiz "' n'existe pas. Veuillez réessayer !\n\n"
-
-
-# On réserve de la place (buffer, nom du fichier)
-fichier:
-    .space 1024     # on réserve de la place pour stocker le nom du fichier
-
-buffer:
-    .space 1        # on initialise un buffer de taille 1
-
-
-# Extensions à ajouter, pour le nom de fichier
-ExtTxt:
-    .asciiz ".txt"
-
-ExtResolu:
-    .asciiz ".resolu"
+    # Extensions à ajouter, pour le nom de fichier
+    ExtTxt:
+        .asciiz ".txt"
+    ExtResolu:
+        .asciiz ".resolu"
 
 
 .text
@@ -41,67 +33,67 @@ ExtResolu:
 # Point d'entrée du programme
 __start:
 
-# On demande le nom du fichier avec lequel on va travailler
-la $a0 TexteDemanderNom         # on charge l'adresse de TexteDemanderNom dans $a0
-li $v0 4                        # On dit que l'on souhaite afficher une chaine de caractères
-syscall                         # On effectue l'appel système
+    # On demande le nom du fichier avec lequel on va travailler
+    la $a0 TexteDemanderNom         # On charge l'adresse de TexteDemanderNom dans $a0
+    li $v0 4                        # On dit que l'on souhaite afficher une chaine de caractères
+    syscall                         # On effectue l'appel système
 
-la $a0 fichier                  # L'emplacement où on va stocker la chaîne demandée
-li $a1 1024                     # taille max du buffer
-li $v0 8                        # appel système pour demander une chaine de caractères
-syscall
+    la $a0 fichier                  # L'emplacement où on va stocker la chaîne demandée
+    li $a1 1013                     # Taille max du buffer (1024 - longueur(".txt.resolu"))
+    li $v0 8                        # Appel système pour demander une chaine de caractères
+    syscall
+    move $t0 $a0                    # Adresse du caractère courant
 
-move $t0 $a0                    # adresse du caractère courant
+    # On enlève le saut de ligne
+    EnleveRetChar:
+    lb $a0 0($t0)                   # On récupère le caractère courant
+    beq $a0 10 FinEnleveRetChar     # Si on a '\n', alors on sort de la boucle
+    beqz $a0 FinEnleveRetChar       # Si on a '\0', alors on sort de la boucle
+    addi $t0 $t0 1                  # Sinon on incrémente l'offset
+    j EnleveRetChar                 # ...et on rentre à nouveau dans la boucle
+    FinEnleveRetChar:
+    sb $0 0($t0)                    # On écrase le '\n' par '\0'
 
-# On enlève le saut de ligne
-EnleveRetChar:
-lb $a0 0($t0)                   # on récupère le caractère courant
-beq $a0 10 FinEnleveRetChar     # si on a '\n', alors on sort de la boucle
-beqz $a0 FinEnleveRetChar       # si on a '\0', alors on sort de la boucle
-addi $t0 $t0 1                  # sinon on incrémente l'offset
-j EnleveRetChar                 # ...et on rerentre dans la boucle
-FinEnleveRetChar:
-sb $0 0($t0)                    # on écrase le '\n' par '\0'
+    # On ajoute l'extension '.txt'
+    la $a0 fichier
+    la $a1 ExtTxt
+    jal Concatener
 
-# On ajoute l'extension '.txt'
-la $a0 fichier
-la $a1 ExtTxt
-jal Concatener
-
-# On peut désormais passer au menu :)
-j Menu
+    # On peut désormais passer au menu :)
+    j Menu
 
 
 # Permet de concaténer deux chaînes de caractères (ajoute de la seconde chaîne à la fin de la première)
 ## Entrées : $a0 = adresse de début de la première chaîne de caractères
 ##           $a1 = adresse de début de la seconde chaîne de caractères
 Concatener:
-    # prologue (a0 s0 s1)
+
+    # Prologue
     subu $sp $sp 12
     sw $a0 8($sp)
     sw $s0 4($sp)
     sw $s1 0($sp)
 
-    move $s0 $a0                # on sauvegarde $a0 dans $s0
-    move $s1 $a1                # on sauvegarde $a1 dans $s1
+    move $s0 $a0                        # On sauvegarde $a0 dans $s0
+    move $s1 $a1                        # On sauvegarde $a1 dans $s1
 
     # On parcourt la première chaîne de caractère (pour avoir l'adresse de fin de la chaîne)
     ParcourirPremiereChaine:
-    lb $a0 0($s0)               # $a0 : caractère courant
+    lb $a0 0($s0)                       # $a0 : caractère courant
     beqz $a0 ParcourirDeuxiemeChaine    # Si on est à la fin de la première chaine, on passe à la seconde
-    addi $s0 $s0 1              # sinon on continue à parcourir la chaîne
+    addi $s0 $s0 1                      # Sinon on continue à parcourir la chaîne
     j ParcourirPremiereChaine
 
     # On ajoute chaque caractère de la seconde chaîne à la suite de la première
     ParcourirDeuxiemeChaine:
-    lb $a0 0($s1)               # $a0 : caractère courant
-    beqz $a0 FinConcatener      # Si on est à la fin de la 2ème chaine, on a fini
-    sb $a0 0($s0)               # ...sinon on ajoute le caractère courant à la suite de la 1ère chaîne
-    addi $s0 $s0 1              # on incrémente le "curseur de la 1ère chaîne" de 1
-    addi $s1 $s1 1              # on incrémente le "curseur de la 2ème chaîne" de 1
+    lb $a0 0($s1)                       # $a0 : caractère courant
+    beqz $a0 FinConcatener              # Si on est à la fin de la 2ème chaine, on a fini
+    sb $a0 0($s0)                       # ...sinon on ajoute le caractère courant à la suite de la 1ère chaîne
+    addi $s0 $s0 1                      # On incrémente le "curseur de la 1ère chaîne" de 1
+    addi $s1 $s1 1                      # On incrémente le "curseur de la 2ème chaîne" de 1
     j ParcourirDeuxiemeChaine
 
-    # épilogue
+    # Epilogue
     FinConcatener:
     lw $a0 8($sp)
     lw $s0 4($sp)
@@ -111,20 +103,20 @@ Concatener:
     jr $ra
 
 
-# Affichage du menu
+# On affiche le menu
 Menu:
-    la $a0 TexteMenu    # On charge l'adresse de TexteMenu dans $a0
-    li $v0 4            # On dit que l'on souhaite afficher une chaîne de caractère
-    syscall             # On effectue l'appel système
-    li $v0 5            # On demande à l'utilisateur de saisir un entier (sera stocké dans $v0)
-    syscall             # On effectue l'appel système
-    beq $v0 1 genereLabyrinthe      # Choix 1 - Générer un labyrinthe
-    beq $v0 2 resoudreLabyrinthe    # Choix 2 - Résoudre un labyrinthe
-    j Menu              # Choix de l'utilisateur inexistant -> on lui redemande
+    la $a0 TexteMenu                # On charge l'adresse de TexteMenu dans $a0
+    li $v0 4                        # On dit que l'on souhaite afficher une chaîne de caractère
+    syscall                         # On effectue l'appel système
+    li $v0 5                        # On demande à l'utilisateur de saisir un entier (sera stocké dans $v0)
+    syscall                         # On effectue l'appel système
+    beq $v0 1 GenererLabyrinthe     # Choix 1 - Générer un labyrinthe
+    beq $v0 2 ResoudreLabyrinthe    # Choix 2 - Résoudre un labyrinthe
+    j Menu                          # Choix de l'utilisateur inexistant -> on lui redemande
 
 
 # Génération d'un labyrinthe
-genereLabyrinthe:
+GenererLabyrinthe:
 
     # On demande la taille N du labyrinthe à l'utilisateur
     DemanderN:
@@ -826,7 +818,7 @@ TesteVisite:
 
 
 # Résolution d'un labyrinthe
-resoudreLabyrinthe:
+ResoudreLabyrinthe:
 
     jal ImporterTableauDepuisFichier
 
