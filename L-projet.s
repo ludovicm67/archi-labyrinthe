@@ -10,6 +10,15 @@ TexteMenu:
 TexteDemanderN:
     .asciiz "Veuillez entrer un entier N compris entre 2 et 99 : "
 
+
+# Textes pour l'affichage des erreurs
+TexteErreurFichier404:
+    .asciiz "\n\tLe fichier '"
+
+TexteErreurFichier404Fin:
+    .asciiz "' n'existe pas. Veuillez réessayer !\n\n"
+
+
 # On réserve de la place (buffer, nom du fichier)
 fichier:
     .space 1024     # on réserve de la place pour stocker le nom du fichier
@@ -17,15 +26,13 @@ fichier:
 buffer:
     .space 1        # on initialise un buffer de taille 1
 
+
 # Extensions à ajouter, pour le nom de fichier
 ExtTxt:
     .asciiz ".txt"
 
 ExtResolu:
     .asciiz ".resolu"
-
-# Debug
-RetChar: .asciiz "\n"
 
 
 .text
@@ -1073,6 +1080,7 @@ ImporterTableauDepuisFichier:
     li $a2 0            # pas besoin de mode (ignoré)
     li $v0 13           # appel système pour ouvrir un fichier
     syscall
+    blt $v0 $0 ErreurFichierNonTrouve  # Le fichier n'existe pas, on relance le programme depuis le début
     move $s0 $v0        # sauvegarde du descripteur du fichier
 
     # Lecture du fichier
@@ -1153,6 +1161,28 @@ ImporterTableauDepuisFichier:
     addu $sp $sp 28
 
     jr $ra
+
+
+# Fonction qui permet de relancer le programme si le fichier entré est inexistant (pour la résolution)
+ErreurFichierNonTrouve:
+
+    li $v0 4                            # On dit que l'on va faire des appels systèmes pour afficher des chaines de caractères
+    la $a0 TexteErreurFichier404        # On charge le début de la chaine de caractère pour le message d'erreur
+    syscall                             # Et on l'affiche
+    la $a0 fichier                      # On charge le nom de fichier entré par l'utilisateur
+    move $t1 $a0                        # On sauvegarde la valeur de l'adresse du buffer 'fichier' pour plus tard
+    syscall                             # On affiche le nom du fichier inexistant
+    la $a0 TexteErreurFichier404Fin     # On charge la fin de la chaine de caractères pour le message d'erreur
+    syscall                             # Et on l'affiche
+
+    # On met des '0' partout tout au long du buffer
+    li $t0 1024                         # Taille réservé pour stocker un nom de fichier dans 'fichier'
+    ResetFichierBuffer:                 # Boucle permettant de mettre des '0' partout
+    subiu $t0 $t0 1                     # On décrémente notre compteur de nombre de '0' restants à insérer
+    addu $t2 $t0 $t1                    # On récupère la bonne adresse pour la case courante
+    sb $0 0($t2)                        # On met un '0' dans la case courante
+    beqz $t0 __start                    # Une fois que le buffer est nettoyé, on relance le programme
+    j ResetFichierBuffer                # Sinon on continu le nettoyage
 
 
 # Fonction qui permet de trouver la case de départ
