@@ -8,11 +8,15 @@
     TexteDemanderN:
         .asciiz "Veuillez entrer un entier N compris entre 2 et 99 : "
 
-    # Textes pour l'affichage des erreurs
-    TexteErreurFichier404:
+    # Textes pour les différents retours à l'utilisateur
+    TexteLeFichier:
         .asciiz "\n\tLe fichier '"
-    TexteErreurFichier404Fin:
-        .asciiz "' n'existe pas. Veuillez réessayer !\n\n"
+    TexteGenerationOk:
+        .asciiz "' contenant le labyrinthe généré a bien été créé !\n"
+    TexteResolutionOk:
+        .asciiz "' contenant le labyrinthe résolu a bien été créé !\n"
+    TexteErreurFichier404:
+        .asciiz "' n'existe pas !\n"
 
     # On réserve de la place (buffer, nom du fichier)
     fichier:
@@ -138,6 +142,14 @@ GenererLabyrinthe:
 
     jal ConstruireLabyrinthe
     jal SauvegarderTableau
+
+    li $v0 4                            # On dit que l'on va faire des appels systèmes pour afficher des chaines de caractères
+    la $a0 TexteLeFichier               # On charge la chaine de caractère "Le fichier '"
+    syscall                             # Et on l'affiche
+    la $a0 fichier                      # On charge le nom de fichier entré par l'utilisateur
+    syscall                             # On affiche le nom du fichier
+    la $a0 TexteGenerationOk            # On charge la fin de la phrase
+    syscall                             # Et on l'affiche
 
     j Exit
 
@@ -829,6 +841,14 @@ ResoudreLabyrinthe:
     jal ResolutionLabyrinthe
     jal SauvegarderTableau      # On écrit le contenu du tableau dans le fichier de sortie
 
+    li $v0 4                            # On dit que l'on va faire des appels systèmes pour afficher des chaines de caractères
+    la $a0 TexteLeFichier               # On charge la chaine de caractère "Le fichier '"
+    syscall                             # Et on l'affiche
+    la $a0 fichier                      # On charge le nom de fichier entré par l'utilisateur
+    syscall                             # On affiche le nom du fichier
+    la $a0 TexteResolutionOk            # On charge la fin de la phrase
+    syscall                             # Et on l'affiche
+
     j Exit
 
 
@@ -1156,26 +1176,18 @@ ImporterTableauDepuisFichier:
     jr $ra
 
 
-# Fonction qui permet de relancer le programme si le fichier entré est inexistant (pour la résolution)
+# Fonction qui permet de dire à l'utilisateur que le fichier entré est inexistant (pour la résolution)
 ErreurFichierNonTrouve:
 
     li $v0 4                            # On dit que l'on va faire des appels systèmes pour afficher des chaines de caractères
-    la $a0 TexteErreurFichier404        # On charge le début de la chaine de caractère pour le message d'erreur
+    la $a0 TexteLeFichier               # On charge le début de la chaine de caractère pour le message d'erreur
     syscall                             # Et on l'affiche
     la $a0 fichier                      # On charge le nom de fichier entré par l'utilisateur
-    move $t1 $a0                        # On sauvegarde la valeur de l'adresse du buffer 'fichier' pour plus tard
     syscall                             # On affiche le nom du fichier inexistant
-    la $a0 TexteErreurFichier404Fin     # On charge la fin de la chaine de caractères pour le message d'erreur
+    la $a0 TexteErreurFichier404        # On charge la fin de la chaine de caractères pour le message d'erreur
     syscall                             # Et on l'affiche
 
-    # On met des '0' partout tout au long du buffer
-    li $t0 1024                         # Taille réservé pour stocker un nom de fichier dans 'fichier'
-    ResetFichierBuffer:                 # Boucle permettant de mettre des '0' partout
-    subiu $t0 $t0 1                     # On décrémente notre compteur de nombre de '0' restants à insérer
-    addu $t2 $t0 $t1                    # On récupère la bonne adresse pour la case courante
-    sb $0 0($t2)                        # On met un '0' dans la case courante
-    beqz $t0 __start                    # Une fois que le buffer est nettoyé, on relance le programme à partir du début
-    j ResetFichierBuffer                # Sinon on continu le nettoyage
+    j Exit
 
 
 # Fonction qui permet de trouver la case de départ
